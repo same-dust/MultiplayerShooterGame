@@ -7,9 +7,9 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Menu.generated.h"
 
-/**
- * 
- */
+class UButton;
+
+
 UCLASS()
 class MUTIPLAYERSESSIONS_API UMenu : public UUserWidget
 {
@@ -37,7 +37,7 @@ protected:
 private:
 	// the Button Name of c++ should coincide with blueprint.
 	UPROPERTY(meta = (BindWidget))
-	class UButton* HostButton;  
+	UButton* HostButton;  
 
 	UPROPERTY(meta = (BindWidget))
 	UButton* JoinButton;

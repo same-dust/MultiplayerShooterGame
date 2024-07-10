@@ -31,6 +31,8 @@ void UMenu::MenuSetup(int32 NumberOfPublicConnections, FString TypeOfMatch, FStr
 
 		}
 	}
+
+	// set the callback function of MultiplayerSessionsSubsystem
 	UGameInstance* GameInstance = GetGameInstance();
 	if (GameInstance)
 	{
@@ -38,6 +40,7 @@ void UMenu::MenuSetup(int32 NumberOfPublicConnections, FString TypeOfMatch, FStr
 	}
 	if (MultiplayerSessionsSubsystem)
 	{
+		// 为session的各种事件绑定回调函数
 		MultiplayerSessionsSubsystem->MultiplayerOnCreateSessionComplete.AddDynamic(this, &ThisClass::OnCreateSession);
 		MultiplayerSessionsSubsystem->MultiplayerOnFindSessionsComplete.AddUObject(this, &ThisClass::OnFindSessions);
 		MultiplayerSessionsSubsystem->MultiplayerOnJoinSessionComplete.AddUObject(this, &ThisClass::OnJoinSession);
@@ -68,6 +71,7 @@ void UMenu::NativeDestruct()
 	MenuTearDown();
 	Super::NativeDestruct();
 }
+
 
 void UMenu::OnCreateSession(bool bWasSuccessful)
 {
@@ -158,6 +162,7 @@ void UMenu::OnDestroySession(bool bWasSuccessful)
 void UMenu::OnStartSession(bool bWasSuccessful)
 {
 }
+
 
 void UMenu::HostButtonClicked()
 {
