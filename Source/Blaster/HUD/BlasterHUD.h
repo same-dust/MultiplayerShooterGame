@@ -7,6 +7,8 @@
 #include "BlasterHUD.generated.h"
 
 class UTexture2D;
+class UCharacterOverlay;
+class UAnnouncement;
 
 USTRUCT(BlueprintType)
 struct FHUDPackage
@@ -30,6 +32,23 @@ class BLASTER_API ABlasterHUD : public AHUD
 	GENERATED_BODY()
 public:
 	virtual void DrawHUD() override;
+	void AddCharacterOverlay();
+	void AddAnnouncement();
+
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	TSubclassOf<UUserWidget> CharacterOverlayClass;
+
+	UPROPERTY()
+	UCharacterOverlay* CharacterOverlay;
+
+	UPROPERTY(EditAnywhere, Category = "Announcements")
+	TSubclassOf<UUserWidget> AnnouncementClass;
+
+	UPROPERTY()
+	UAnnouncement* Announcement;
+protected:
+	virtual void BeginPlay() override;
+	
 private:
 	FHUDPackage HUDPackage;
 

@@ -33,13 +33,12 @@ void UOverheadWidget::ShowPlayerNetRole(APawn* InPawn)
 		break;
 	}
 	FString LocalRoleString = FString::Printf(TEXT("Local Role: %s"), *Role);
-	//SetDisplayText(LocalRoleString);
-	APlayerState* PlayerState = GetOwningPlayerState<APlayerState>();
-	if (PlayerState)
-	{
-		FString PlayerName = PlayerState->GetPlayerName();
-		SetDisplayText(PlayerName);
-	}
+	SetDisplayText(LocalRoleString);
+}
+
+void UOverheadWidget::ShowPlayerName(FString PlayerName)
+{
+	SetDisplayText(PlayerName);
 }
 
 void UOverheadWidget::NativeDestruct()

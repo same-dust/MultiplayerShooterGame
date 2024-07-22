@@ -6,7 +6,9 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "Blaster/BlasterTypes/TurningInPlace.h"
+#include "Blaster/BlasterTypes/CombatState.h"
 #include "Blaster/Interfaces/InteractWithCrosshairsInterface.h"
+#include "Components/TimelineComponent.h"
 #include "BlasterCharacter.generated.h"
 
 
@@ -19,6 +21,10 @@ class UWidgetComponent;
 class AWeapon;
 class UCombatComponent;
 class UAnimMontage;
+class ABlasterPlayerController;
+class ABlasterPlayerState;
+class AController;
+class USoundCue;
 
 UCLASS()
 class BLASTER_API ABlasterCharacter : public ACharacter,public IInteractWithCrosshairsInterface
@@ -29,18 +35,28 @@ public:
 	// Sets default values for this character's properties
 	ABlasterCharacter();
 	virtual void Tick(float DeltaTime) override;
-	virtual void BeginPlay() override;
+	void UpdateHUDHealth();
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PostInitializeComponents() override;
+	virtual void PossessedBy(AController* NewController) override;
 	void PlayFireMontage(bool bAiming);
-	
-
-	UFUNCTION(NetMulticast, Unreliable)
-	void MulticastHit();
+	void PlayReloadMontage();
+	void PlayElimMontage();
 
 	virtual void OnRep_ReplicatedMovement() override;
+	void Elim();
+	UFUNCTION(NetMulticast,Reliable)
+	void MulticastElim();
+	virtual void Destroyed() override;
+
+	UPROPERTY(Replicated)
+	bool bDisableGameplay=false;
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void ShowSniperScopeWidget(bool bShowScope);
 protected:
+	virtual void BeginPlay() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputMappingContext* BlasterContext;
 
@@ -65,6 +81,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputAction* FireAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputAction* ReloadAction;
+
 	//
 	// the callback function which UInputAction bind
 	//
@@ -73,6 +92,7 @@ protected:
 	void Look(const FInputActionValue& Value);
 	void EquipButtonPressed();
 	void CrouchButtonPressed();
+	void ReloadButtonPressed();
 	void AimButtonPressed();
 	void AimButtonReleased();
 	void FireButtonPressed();
@@ -82,6 +102,13 @@ protected:
 	void CalculateAO_Pitch();
 	void SimProxiesTurn();
 	void PlayHitReactMontage();
+	
+	UFUNCTION()
+	void ReceiveDamage(AActor* DamagedActor,float Damage,const UDamageType* DamageType,AController* InstigatorController,AActor* DamageCauser);
+	
+	// Poll for any relelvant classes and initialize our HUD
+	void PollInit();
+	void RotateInPlace(float DeltaTime);
 private:
 	UPROPERTY(VisibleAnywhere,Category=Camera)
 	USpringArmComponent* CameraBoom;
@@ -98,7 +125,7 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UCombatComponent* Combat;
 
 	UFUNCTION(Server,Reliable)
@@ -109,11 +136,21 @@ private:
 	float AO_Pitch;
 	FRotator StartingAimRotation;
 
+	/**
+	* Animation montages
+	*/
+
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* FireWeaponMontage;
 
 	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* ReloadMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* HitReactMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* ElimMontage;
 
 	
 
@@ -132,7 +169,68 @@ private:
 	float ProxyYaw;
 	float TimeSinceLastMovementReplication;
 	float CalculateSpeed();
+
+	// Player health
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	float MaxHealth = 100.f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Health,VisibleAnywhere, Category = "Player Stats")
+	float Health = 100.f;
+
+	UFUNCTION()
+	void OnRep_Health();
+
+	UPROPERTY()
+	ABlasterPlayerController* BlasterPlayerController;
+
+	bool bElimmed = false;
+
+	UPROPERTY(EditDefaultsOnly)
+	float ElimDelay = 3.f;
+
+	FTimerHandle ElimTimer;
+
+	void ElimTimerFinished();
+
+	// Dissolve effect
+	UPROPERTY(VisibleAnywhere)
+	UTimelineComponent* DissolveTimeline;
+	FOnTimelineFloat DissolveTrack;
+
+	UPROPERTY(EditAnywhere)
+	UCurveFloat* DissolveCurve;
+
+	UFUNCTION()
+	void UpdateDissolveMaterial(float DissolveValue);
+	void StartDissolve();
+
+	// Dynamic instace that we can change at runtime
+	UPROPERTY(VisibleAnywhere, Category = Elim)
+	UMaterialInstanceDynamic* DynamicDissolveMaterialInstance;
+
+	// Material instance set on the Blueprint, used with the dynamic material instance
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* DissolveMaterialInstance;
+
+	/**
+	* Elim bot
+	*/
+	UPROPERTY(EditAnywhere)
+	UParticleSystem* ElimBotEffect;
+
+	UPROPERTY(VisibleAnywhere)
+	UParticleSystemComponent* ElimBotComponent;
+
+	UPROPERTY(EditAnywhere)
+	USoundCue* ElimBotSound;
+
+	UPROPERTY()
+	ABlasterPlayerState* BlasterPlayerState;
+
 public:	
+	UPROPERTY(BlueprintReadOnly, Replicated)
+	FString PlayerName;
+
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
 	bool IsAiming();
@@ -143,4 +241,18 @@ public:
 	FVector GetHitTarget() const;
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
+	FORCEINLINE bool IsElimmed() const { return bElimmed; }
+	FORCEINLINE float GetHealth() const { return Health; }
+	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
+	ECombatState GetCombatState() const;
+	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
+	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
 };
+
+
+/** 
+
+ Unreal Engine5中，Super::function() 相当于C++在派生类的虚函数中调用Base::function()；
+ Cast<derive>(base)模板函数的主要作用是将一个指向基类的指针或引用转换为一个指向派生类的指针或者引用
+
+*/

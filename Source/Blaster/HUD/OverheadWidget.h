@@ -24,6 +24,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	
 	void ShowPlayerNetRole(APawn* InPawn);
+
+	UFUNCTION(BlueprintCallable)
+	void ShowPlayerName(FString PlayerName);
 protected:
 
 	// After version 5.1,should use NativeDestruct() to replace OnLevelRemoveFromWorld()
