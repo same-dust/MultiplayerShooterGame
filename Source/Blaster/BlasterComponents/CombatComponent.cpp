@@ -10,6 +10,7 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "Kismet/GameplayStatics.h"
 #include "Blaster/PlayerController/BlasterPlayerController.h"
+#include "Blaster/Weapon/Projectile.h"
 #include "Blaster/Character/BlasterAnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Sound/SoundCue.h"
@@ -264,9 +265,17 @@ void UCombatComponent::ReloadEmptyWeapon()
 	}
 }
 
+void UCombatComponent::ShowAttachedGrenade(bool bShowGrenade)
+{
+	if (Character && Character->GetAttachedGrenade())
+	{
+		Character->GetAttachedGrenade()->SetVisibility(bShowGrenade);
+	}
+}
+
 void UCombatComponent::Reload()
 {
-	if (CarriedAmmo > 0&&CombatState == ECombatState::ECS_Unoccupied)
+	if (CarriedAmmo > 0 && CombatState == ECombatState::ECS_Unoccupied && EquippedWeapon && !EquippedWeapon->IsFull())
 	{
 		ServerReload();
 	}
@@ -314,6 +323,7 @@ void UCombatComponent::OnRep_CombatState()
 		{
 			Character->PlayThrowGrenadeMontage();
 			AttachActorToLeftHand(EquippedWeapon);
+			ShowAttachedGrenade(true);
 		}
 		break;
 	}
@@ -374,6 +384,24 @@ void UCombatComponent::ThrowGrenadeFinished()
 	AttachActorToRightHand(EquippedWeapon);
 }
 
+void UCombatComponent::LaunchGrenade()
+{
+	ShowAttachedGrenade(false);
+	if (Character && Character->HasAuthority()&&GrenadeClass&&Character->GetAttachedGrenade())
+	{
+		const FVector StartingLocation = Character->GetAttachedGrenade()->GetComponentLocation();
+		FVector ToTarget = HitTarget - StartingLocation;
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = Character;
+		SpawnParams.Instigator = Character;
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			World->SpawnActor<AProjectile>(GrenadeClass, StartingLocation, ToTarget.Rotation(), SpawnParams);
+		}
+	}
+}
+
 void UCombatComponent::HandleReload()
 {
 	Character->PlayReloadMontage();
@@ -395,12 +423,13 @@ int32 UCombatComponent::AmountToReload()
 
 void UCombatComponent::ThrowGrenade()
 {
-	if (CombatState != ECombatState::ECS_Unoccupied) return;
+	if (CombatState != ECombatState::ECS_Unoccupied||!IsValid(EquippedWeapon)) return;
 	CombatState = ECombatState::ECS_ThrowingGrenade;
 	if (Character)
 	{
 		Character->PlayThrowGrenadeMontage();
 		AttachActorToLeftHand(EquippedWeapon);
+		ShowAttachedGrenade(true);
 	}
 	if (Character && !Character->HasAuthority())
 	{
@@ -417,6 +446,7 @@ void UCombatComponent::ServerThrowGrenade_Implementation()
 	{
 		Character->PlayThrowGrenadeMontage();
 		AttachActorToLeftHand(EquippedWeapon);
+		ShowAttachedGrenade(true);
 	}
 }
 

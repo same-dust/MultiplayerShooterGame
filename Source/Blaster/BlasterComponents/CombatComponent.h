@@ -13,6 +13,7 @@
 
 class AWeapon;
 class ABlasterHUD;
+class AProjectile;
 class ABlasterCharacter;
 class ABlasterPlayerController;
 
@@ -41,6 +42,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void ThrowGrenadeFinished();
+
+	UFUNCTION(BlueprintCallable)
+	void LaunchGrenade();
 protected:
 	virtual void BeginPlay() override;
 	void SetAiming(bool bIsAiming);
@@ -76,13 +80,16 @@ protected:
 	UFUNCTION(Server,Reliable)
 	void ServerThrowGrenade();
 
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<AProjectile> GrenadeClass;
+
 	void DropEquippedWeapon();
 	void AttachActorToRightHand(AActor* ActorToAttach);
 	void AttachActorToLeftHand(AActor* ActorToAttach);
 	void UpdateCarriedAmmo();
 	void PlayEquipWeaponSound();
 	void ReloadEmptyWeapon();
-
+	void ShowAttachedGrenade(bool bShowGrenade);
 private:
 	UPROPERTY()
 	ABlasterCharacter* Character;
