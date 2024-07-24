@@ -20,6 +20,7 @@ class UCameraComponent;
 class UWidgetComponent;
 class AWeapon;
 class UCombatComponent;
+class UBuffComponent;
 class UAnimMontage;
 class ABlasterPlayerController;
 class ABlasterPlayerState;
@@ -36,6 +37,8 @@ public:
 	ABlasterCharacter();
 	virtual void Tick(float DeltaTime) override;
 	void UpdateHUDHealth();
+	void UpdateHUDShield();
+	void UpdateHUDAmmo();
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PostInitializeComponents() override;
@@ -55,6 +58,8 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowSniperScopeWidget(bool bShowScope);
+
+	void SpawnDefaultWeapon();
 protected:
 	virtual void BeginPlay() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
@@ -101,7 +106,8 @@ protected:
 	void FireButtonPressed();
 	void FireButtonReleased();
 	void GrenadeButtonPressed();
-
+	void DropOrDestroyWeapon(AWeapon* Weapon);
+	void DropOrDestroyWeapons();
 	void AimOffset(float DeltaTime);
 	void CalculateAO_Pitch();
 	void SimProxiesTurn();
@@ -113,6 +119,7 @@ protected:
 	// Poll for any relelvant classes and initialize our HUD
 	void PollInit();
 	void RotateInPlace(float DeltaTime);
+	
 private:
 	UPROPERTY(VisibleAnywhere,Category=Camera)
 	USpringArmComponent* CameraBoom;
@@ -131,6 +138,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UCombatComponent* Combat;
+
+	UPROPERTY(VisibleAnywhere)
+	UBuffComponent* Buff;
 
 	UFUNCTION(Server,Reliable)
 	void ServerEquipButtonPressed();
@@ -175,7 +185,9 @@ private:
 	float TimeSinceLastMovementReplication;
 	float CalculateSpeed();
 
-	// Player health
+	/**
+	* Player health
+	*/ 
 	UPROPERTY(EditAnywhere, Category = "Player Stats")
 	float MaxHealth = 100.f;
 
@@ -183,7 +195,20 @@ private:
 	float Health = 100.f;
 
 	UFUNCTION()
-	void OnRep_Health();
+	void OnRep_Health(float LastHealth);
+
+	/**
+	* Player shield
+	*/
+
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	float MaxShield = 200.f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Shield, EditAnywhere, Category = "Player Stats")
+	float Shield = 0.f;
+
+	UFUNCTION()
+	void OnRep_Shield(float LastShield);
 
 	UPROPERTY()
 	ABlasterPlayerController* BlasterPlayerController;
@@ -239,6 +264,12 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* AttachedGrenade;
 
+	/**
+	* Default weapon
+	*/
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<AWeapon> DefaultWeaponClass;
+
 public:	
 	UPROPERTY(BlueprintReadOnly, Replicated)
 	FString PlayerName;
@@ -255,12 +286,17 @@ public:
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 	FORCEINLINE float GetHealth() const { return Health; }
+	FORCEINLINE void SetHealth(float Amount) { Health = Amount; } 
 	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
 	ECombatState GetCombatState() const;
 	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
 	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
 	FORCEINLINE UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
 	FORCEINLINE UStaticMeshComponent* GetAttachedGrenade() const { return AttachedGrenade; }
+	FORCEINLINE UBuffComponent* GetBuff() const { return Buff; }
+	FORCEINLINE float GetShield() const { return Shield; }
+	FORCEINLINE void SetShield(float Amount) { Shield = Amount; }
+	FORCEINLINE float GetMaxShield() const { return MaxShield; }
 };
 
 

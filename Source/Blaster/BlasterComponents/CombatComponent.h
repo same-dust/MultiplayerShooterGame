@@ -29,6 +29,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	void EquipWeapon(AWeapon* WeaponToEquip);
+	void SwapWeapons();
 	void Reload();
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading();
@@ -45,6 +46,11 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void LaunchGrenade();
+
+	UFUNCTION(Server,Reliable)
+	void ServerLaunchGrenade(const FVector_NetQuantize& Target );
+
+	void PickupAmmo(EWeaponType WeaponType,int32 AmmoAmount);
 protected:
 	virtual void BeginPlay() override;
 	void SetAiming(bool bIsAiming);
@@ -55,7 +61,8 @@ protected:
 	UFUNCTION()
 	void OnRep_EquippedWeapon();
 
-	
+	UFUNCTION()
+	void OnRep_SecondaryWeapon();
 
 	void Fire();
 
@@ -86,10 +93,13 @@ protected:
 	void DropEquippedWeapon();
 	void AttachActorToRightHand(AActor* ActorToAttach);
 	void AttachActorToLeftHand(AActor* ActorToAttach);
+	void AttachActorToBackpack(AActor* ActorToAttach);
 	void UpdateCarriedAmmo();
-	void PlayEquipWeaponSound();
+	void PlayEquipWeaponSound(AWeapon* WeaponToEquip);
 	void ReloadEmptyWeapon();
 	void ShowAttachedGrenade(bool bShowGrenade);
+	void EquipPrimaryWeapon(AWeapon* WeaponToEquip);
+	void EquipSecondaryWeapon(AWeapon* WeaponToEquip);
 private:
 	UPROPERTY()
 	ABlasterCharacter* Character;
@@ -100,6 +110,9 @@ private:
 
 	UPROPERTY(ReplicatedUsing=OnRep_EquippedWeapon)
 	AWeapon* EquippedWeapon;
+
+	UPROPERTY(ReplicatedUsing = OnRep_SecondaryWeapon)
+	AWeapon* SecondaryWeapon;
 
 	UPROPERTY(Replicated)
 	bool bAiming;
@@ -160,25 +173,25 @@ private:
 	TMap<EWeaponType, int32> CarriedAmmoMap; // hash function(µ×²ãÔ­Àí)
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingARAmmo = 30;
+	int32 StartingARAmmo = 60;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingRocketAmmo = 4;
+	int32 StartingRocketAmmo = 8;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingPistolAmmo = 60;
+	int32 StartingPistolAmmo = 30;
 
 	UPROPERTY(EditAnywhere)
 	int32 StartingSMGAmmo = 60;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingShotgunAmmo = 10;
+	int32 StartingShotgunAmmo = 12;
 
 	UPROPERTY(EditAnywhere)
 	int32 StartingSniperAmmo = 11;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingGrenadeLauncherAmmo = 2;
+	int32 StartingGrenadeLauncherAmmo = 8;
 
 	void InitializeCarriedAmmo();
 
@@ -190,8 +203,20 @@ private:
 
 	void UpdateAmmoValues();
 	void UpdateShotgunAmmoValues();
+
+	UPROPERTY(ReplicatedUsing = OnRep_Grenades)
+	int32 Grenades = 4;
+
+	UFUNCTION()
+	void OnRep_Grenades();
+
+	UPROPERTY(EditAnywhere)
+	int32 MaxGrenades = 4;
+
+	void UpdateHUDGrenades();
 public:	
-	
-	
-		
+	FORCEINLINE int32 GetGrenades() const { return Grenades; }
+	FORCEINLINE int32 GetCarriedAmmo() const { return CarriedAmmo; }
+	FORCEINLINE AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
+	bool ShouldSwapWeapons();
 };
