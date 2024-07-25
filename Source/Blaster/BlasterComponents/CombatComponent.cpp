@@ -430,19 +430,7 @@ void UCombatComponent::UpdateShotgunAmmoValues()
 	}
 }
 
-void UCombatComponent::OnRep_Grenades()
-{
-	UpdateHUDGrenades();
-}
 
-void UCombatComponent::UpdateHUDGrenades()
-{
-	Controller = IsValid(Controller) ? Controller : Cast<ABlasterPlayerController>(Character->Controller);
-	if (Controller)
-	{
-		Controller->SetHUDGrenades(Grenades);
-	}
-}
 
 bool UCombatComponent::ShouldSwapWeapons()
 {
@@ -457,12 +445,6 @@ void UCombatComponent::JumpToShotgunEnd()
 	{
 		AnimInstance->Montage_JumpToSection(FName("ShotgunEnd"));
 	}
-}
-
-void UCombatComponent::ThrowGrenadeFinished()
-{
-	CombatState = ECombatState::ECS_Unoccupied;
-	AttachActorToRightHand(EquippedWeapon);
 }
 
 void UCombatComponent::LaunchGrenade()
@@ -511,6 +493,20 @@ int32 UCombatComponent::AmountToReload()
 	return 0;
 }
 
+void UCombatComponent::OnRep_Grenades()
+{
+	UpdateHUDGrenades();
+}
+
+void UCombatComponent::UpdateHUDGrenades()
+{
+	Controller = IsValid(Controller) ? Controller : Cast<ABlasterPlayerController>(Character->Controller);
+	if (Controller)
+	{
+		Controller->SetHUDGrenades(Grenades);
+	}
+}
+
 void UCombatComponent::ThrowGrenade()
 {
 	if (Grenades == 0) return;
@@ -533,8 +529,6 @@ void UCombatComponent::ThrowGrenade()
 	}
 }
 
-
-
 void UCombatComponent::ServerThrowGrenade_Implementation()
 {
 	if (Grenades == 0) return;
@@ -547,6 +541,12 @@ void UCombatComponent::ServerThrowGrenade_Implementation()
 	}
 	Grenades = FMath::Clamp(Grenades - 1, 0, MaxGrenades);
 	UpdateHUDGrenades();
+}
+
+void UCombatComponent::ThrowGrenadeFinished()
+{
+	CombatState = ECombatState::ECS_Unoccupied;
+	AttachActorToRightHand(EquippedWeapon);
 }
 
 void UCombatComponent::OnRep_EquippedWeapon()

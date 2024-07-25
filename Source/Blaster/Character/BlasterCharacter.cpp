@@ -117,6 +117,9 @@ void ABlasterCharacter::BeginPlay()
 	UpdateHUDAmmo();
 	UpdateHUDHealth();
 	UpdateHUDShield();
+
+	UpdateHUDGrenades(); // this case only work on client when respawn.may notice that BlasterController or Combat isn't valid when the funtion execute on the server.
+	
 	if (HasAuthority())
 	{
 		OnTakeAnyDamage.AddDynamic(this, &ABlasterCharacter::ReceiveDamage);
@@ -157,6 +160,7 @@ void ABlasterCharacter::PossessedBy(AController* NewController)
 				Subsystem->AddMappingContext(BlasterContext, 0);
 			}
 		}
+		UpdateHUDGrenades(); // Work well on the Server when respawn.
 	}
 	
 }
@@ -390,6 +394,16 @@ void ABlasterCharacter::UpdateHUDAmmo()
 	{
 		BlasterPlayerController->SetHUDCarriedAmmo(Combat->CarriedAmmo);
 		BlasterPlayerController->SetHUDWeaponAmmo(Combat->EquippedWeapon->GetAmmo());
+	}
+}
+
+void ABlasterCharacter::UpdateHUDGrenades()
+{
+	BlasterPlayerController = IsValid(BlasterPlayerController) ? BlasterPlayerController : Cast<ABlasterPlayerController>(Controller);
+	if (BlasterPlayerController && Combat)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UpdateHUDGrenades Execute"));
+		BlasterPlayerController->SetHUDGrenades(Combat->GetGrenades());
 	}
 }
 

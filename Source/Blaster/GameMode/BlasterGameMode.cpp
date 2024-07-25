@@ -44,6 +44,8 @@ void ABlasterGameMode::OnMatchStateSet()
 	}
 }
 
+
+
 void ABlasterGameMode::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -108,13 +110,43 @@ void ABlasterGameMode::RequestRespawn(ACharacter* ElimmedCharacter, AController*
 	}
 	if (ElimmedController)
 	{
-		TArray<AActor*> PlayerStarts;
-		UGameplayStatics::GetAllActorsOfClass(this, APlayerStart::StaticClass(), PlayerStarts);
-		int32 Selection = FMath::RandRange(0, PlayerStarts.Num() - 1);
-		RestartPlayerAtPlayerStart(ElimmedController, PlayerStarts[Selection]);
+		PickLocationToRespawn(ElimmedController); // 在离所有玩家最远的的playerstart重生
 	}
 }
 
-
+void ABlasterGameMode::PickLocationToRespawn(AController* ElimmedController)
+{
+	TArray<AActor*> PlayerStarts;
+	UGameplayStatics::GetAllActorsOfClass(this, APlayerStart::StaticClass(), PlayerStarts);
+	TArray<AActor*> ExistPlayers;
+	UGameplayStatics::GetAllActorsOfClass(this, ABlasterCharacter::StaticClass(), ExistPlayers);
+	float MaxDistanceOfPlayers = 0;
+	AActor* StartSpot=nullptr;
+	for (auto Start : PlayerStarts)
+	{
+		FVector2D StartLocation(Start->GetActorLocation().X, Start->GetActorLocation().Y);
+		float DistanceOfPlayers = 0;
+		for (auto Player : ExistPlayers)
+		{
+			FVector2D PlayerLocation(Player->GetActorLocation().X, Player->GetActorLocation().Y);
+			DistanceOfPlayers = DistanceOfPlayers +
+				FMath::Abs(StartLocation.X - PlayerLocation.X) +
+				FMath::Abs(StartLocation.Y - PlayerLocation.Y); //  城市距离
+		}
+		if (DistanceOfPlayers > MaxDistanceOfPlayers)
+		{
+			MaxDistanceOfPlayers = DistanceOfPlayers;
+			StartSpot = Start;
+		}
+	}
+	if (ElimmedController && StartSpot)
+	{
+		RestartPlayerAtPlayerStart(ElimmedController, StartSpot);
+	}
+	else
+	{
+		// 报错
+	}
+}
 
 

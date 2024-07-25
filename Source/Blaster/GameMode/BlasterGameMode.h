@@ -37,6 +37,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnMatchStateSet() override;
+	void PickLocationToRespawn(AController* ElimmedController);
 private:
 	float CountdownTime = 0.f;
 public:
