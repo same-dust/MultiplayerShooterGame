@@ -46,6 +46,12 @@ public:
 
 	UPROPERTY()
 	UAnnouncement* Announcement;
+	
+	/*
+	UPROPERTY(EditAnywhere, Category = "Controls")
+	TSubclassOf<UUserWidget> ControlsWidget;
+	*/
+	
 protected:
 	virtual void BeginPlay() override;
 	

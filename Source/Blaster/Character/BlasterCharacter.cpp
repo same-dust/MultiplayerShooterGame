@@ -367,8 +367,6 @@ void ABlasterCharacter::PlayHitReactMontage()
 	}
 }
 
-
-
 void ABlasterCharacter::UpdateHUDHealth()
 {
 	BlasterPlayerController = IsValid(BlasterPlayerController) ? BlasterPlayerController : Cast<ABlasterPlayerController>(Controller);

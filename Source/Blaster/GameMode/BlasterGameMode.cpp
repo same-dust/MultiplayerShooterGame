@@ -110,7 +110,7 @@ void ABlasterGameMode::RequestRespawn(ACharacter* ElimmedCharacter, AController*
 	}
 	if (ElimmedController)
 	{
-		PickLocationToRespawn(ElimmedController); // 在离所有玩家最远的的playerstart重生
+		PickLocationToRespawn(ElimmedController); // 在离所有玩家最远的的playerstart重生,如果没有其他玩家存活，则随机重生
 	}
 }
 
@@ -122,23 +122,32 @@ void ABlasterGameMode::PickLocationToRespawn(AController* ElimmedController)
 	UGameplayStatics::GetAllActorsOfClass(this, ABlasterCharacter::StaticClass(), ExistPlayers);
 	float MaxDistanceOfPlayers = 0;
 	AActor* StartSpot=nullptr;
-	for (auto Start : PlayerStarts)
+	if (ExistPlayers.Num() > 0)
 	{
-		FVector2D StartLocation(Start->GetActorLocation().X, Start->GetActorLocation().Y);
-		float DistanceOfPlayers = 0;
-		for (auto Player : ExistPlayers)
+		for (auto Start : PlayerStarts)
 		{
-			FVector2D PlayerLocation(Player->GetActorLocation().X, Player->GetActorLocation().Y);
-			DistanceOfPlayers = DistanceOfPlayers +
-				FMath::Abs(StartLocation.X - PlayerLocation.X) +
-				FMath::Abs(StartLocation.Y - PlayerLocation.Y); //  城市距离
-		}
-		if (DistanceOfPlayers > MaxDistanceOfPlayers)
-		{
-			MaxDistanceOfPlayers = DistanceOfPlayers;
-			StartSpot = Start;
+			FVector2D StartLocation(Start->GetActorLocation().X, Start->GetActorLocation().Y);
+			float DistanceOfPlayers = 0;
+			for (auto Player : ExistPlayers)
+			{
+				FVector2D PlayerLocation(Player->GetActorLocation().X, Player->GetActorLocation().Y);
+				DistanceOfPlayers = DistanceOfPlayers +
+					FMath::Abs(StartLocation.X - PlayerLocation.X) +
+					FMath::Abs(StartLocation.Y - PlayerLocation.Y); //  城市距离
+			}
+			if (DistanceOfPlayers > MaxDistanceOfPlayers)
+			{
+				MaxDistanceOfPlayers = DistanceOfPlayers;
+				StartSpot = Start;
+			}
 		}
 	}
+	else
+	{
+		int32 Selection = FMath::RandRange(0, PlayerStarts.Num() - 1);
+		StartSpot = PlayerStarts[Selection];
+	}
+
 	if (ElimmedController && StartSpot)
 	{
 		RestartPlayerAtPlayerStart(ElimmedController, StartSpot);

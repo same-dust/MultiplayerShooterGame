@@ -22,7 +22,7 @@ public:
 	void SetHUDWeaponAmmo(int32 Ammo);
 	void SetHUDCarriedAmmo(int32 Ammo);
 	void SetHUDMatchCountdown(float CountdownTime);
-	void SetHUDAnnouncementCountdown(float CountdownTime);
+	void SetHUDAnnouncementCountdown(int32 CountdownTime);
 	void SetHUDGrenades(int32 Grenades);
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void Tick(float DeltaTime) override;

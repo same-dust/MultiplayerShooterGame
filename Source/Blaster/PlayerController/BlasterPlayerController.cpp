@@ -85,7 +85,6 @@ void ABlasterPlayerController::ServerCheckMatchState_Implementation()
 	}
 }
 
-
 void ABlasterPlayerController::ReceivedPlayer()
 {
 	Super::ReceivedPlayer();
@@ -111,8 +110,6 @@ void ABlasterPlayerController::OnMatchStateSet(FName State)
 	}
 }
 
-
-
 void ABlasterPlayerController::OnRep_MatchState()
 {
 	if (MatchState == MatchState::InProgress)
@@ -124,8 +121,6 @@ void ABlasterPlayerController::OnRep_MatchState()
 		HandleCooldown();
 	}
 }
-
-
 
 void ABlasterPlayerController::HandleMatchHasStarted()
 {
@@ -196,7 +191,6 @@ void ABlasterPlayerController::HandleCooldown()
 		BlasterCharacter->GetCombat()->FireButtonPressed(false);
 	}
 }
-
 
 void ABlasterPlayerController::PollInit()
 {
@@ -399,7 +393,7 @@ void ABlasterPlayerController::BlinkCountdownText()
 	}
 }
 
-void ABlasterPlayerController::SetHUDAnnouncementCountdown(float CountdownTime)
+void ABlasterPlayerController::SetHUDAnnouncementCountdown(int32 CountdownTime)
 {
 	BlasterHUD = IsValid(BlasterHUD) ? BlasterHUD : Cast<ABlasterHUD>(GetHUD());
 	bool bHUDValid = BlasterHUD &&
@@ -407,14 +401,13 @@ void ABlasterPlayerController::SetHUDAnnouncementCountdown(float CountdownTime)
 		BlasterHUD->Announcement->WarmupTime;
 	if (bHUDValid)
 	{
-		if (CountdownTime < 0.f)
+		if (CountdownTime < 0)
 		{
 			BlasterHUD->Announcement->WarmupTime->SetText(FText());
 			return;
 		}
-
-		int32 Minutes = FMath::FloorToInt(CountdownTime / 60.f);
-		int32 Seconds = CountdownTime - Minutes * 60;
+		int32 Minutes = CountdownTime / 60;
+		int32 Seconds = CountdownTime - Minutes * 60-1;
 		FString CountdownText = FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds);
 		BlasterHUD->Announcement->WarmupTime->SetText(FText::FromString(CountdownText));
 	}
