@@ -6,6 +6,10 @@
 #include "GameFramework/PlayerController.h"
 #include "BlasterPlayerController.generated.h"
 
+class UInputAction;
+class UInputMappingContext;
+class UUserWidget;
+class UReturnToMainMenu;
 class ABlasterHUD;
 class UCharacterOverlay;
 class ABlasterGameMode;
@@ -39,6 +43,14 @@ public:
 
 	FHighPingDelegate HighPingDelegate;
 protected:
+	virtual void SetupInputComponent() override;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputMappingContext* ControllerContext;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputAction* QuitAction;
+
+	void InitializeInputMappingContext();
 	virtual void BeginPlay() override;
 	void SetHUDTime();
 	void PollInit();
@@ -71,9 +83,22 @@ protected:
 	void HighPingWarning();
 	void StopHighPingWarning();
 	void CheckPing(float DeltaTime);
+
+	void ShowReturnToMainMenu();
 private:
 	UPROPERTY()
 	ABlasterHUD* BlasterHUD;
+
+	/**
+	* Return to main menu
+	*/
+	UPROPERTY(EditAnywhere, Category = HUD)
+	TSubclassOf<UUserWidget> ReturnToMainMenuWidget;
+
+	UPROPERTY()
+	UReturnToMainMenu* ReturnToMainMenu;
+
+	bool bReturnToMainMenuOpen = false;
 
 	UPROPERTY()
 	ABlasterGameMode* BlasterGameMode;

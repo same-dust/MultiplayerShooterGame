@@ -5,6 +5,7 @@
 #include "Blaster/HUD/BlasterHUD.h"
 #include "Blaster/HUD/CharacterOverlay.h"
 #include "Blaster/HUD/Announcement.h"
+#include "Blaster/HUD/ReturnToMainMenu.h"
 #include "Blaster/Character/BlasterCharacter.h"
 #include "Blaster/BlasterComponents/CombatComponent.h"
 #include "Blaster/Weapon/Weapon.h"
@@ -15,8 +16,58 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
+#include "EnhancedInputSubsystems.h"
+#include "EnhancedInputComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
+
+void ABlasterPlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+
+	// Bind input actions
+	if (InputComponent == nullptr) return;
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
+	{
+		EnhancedInputComponent->BindAction(QuitAction, ETriggerEvent::Started, this, &ABlasterPlayerController::ShowReturnToMainMenu);
+	}
+}
+
+void ABlasterPlayerController::InitializeInputMappingContext()
+{
+	if (IsLocalController())
+	{
+		if (GetLocalPlayer() == nullptr)
+		{
+			if (HasAuthority())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Server Can't reach LocalPlayer!!!"));
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Client Can't reach LocalPlayer!!!"));
+			}
+
+			return;
+		}
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = GetLocalPlayer()->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>()) // line 42
+		{
+			if (Subsystem)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("reach Subsystem!!!,%d"), HasAuthority());
+				Subsystem->AddMappingContext(ControllerContext, 1);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("Failed to get EnhancedInputLocalPlayerSubsystem"));
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("LocalPlayer is null"));
+		}
+	}
+}
 
 void ABlasterPlayerController::BeginPlay()
 {
@@ -24,6 +75,8 @@ void ABlasterPlayerController::BeginPlay()
 
 	BlasterHUD = Cast<ABlasterHUD>(GetHUD());
 	ServerCheckMatchState();
+
+	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ABlasterPlayerController::InitializeInputMappingContext);
 }
 
 void ABlasterPlayerController::Tick(float DeltaTime)
@@ -68,6 +121,28 @@ void ABlasterPlayerController::CheckPing(float DeltaTime)
 		if (PingAnimationRunningTime > HighPingDuration)
 		{
 			StopHighPingWarning();
+		}
+	}
+}
+
+void ABlasterPlayerController::ShowReturnToMainMenu()
+{
+	// TODO show the Return to Main Menu widget
+	if (!IsValid(ReturnToMainMenuWidget)) return;
+	if (ReturnToMainMenu == nullptr)
+	{
+		ReturnToMainMenu = CreateWidget<UReturnToMainMenu>(this, ReturnToMainMenuWidget);
+	}
+	if (ReturnToMainMenu)
+	{
+		bReturnToMainMenuOpen = !bReturnToMainMenuOpen;
+		if (bReturnToMainMenuOpen)
+		{
+			ReturnToMainMenu->MenuSetup();
+		}
+		else
+		{
+			ReturnToMainMenu->MenuTearDown();
 		}
 	}
 }
