@@ -10,6 +10,8 @@ class ABlasterHUD;
 class UCharacterOverlay;
 class ABlasterGameMode;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHighPingDelegate, bool, bPingTooHigh);
+
 UCLASS()
 class BLASTER_API ABlasterPlayerController : public APlayerController
 {
@@ -32,6 +34,10 @@ public:
 	void OnMatchStateSet(FName State);
 	void HandleMatchHasStarted();
 	void HandleCooldown();
+
+	float SingleTripTime = 0.f;
+
+	FHighPingDelegate HighPingDelegate;
 protected:
 	virtual void BeginPlay() override;
 	void SetHUDTime();
@@ -61,6 +67,10 @@ protected:
 
 	UFUNCTION(Client,Reliable)
 	void ClientJoinMidgame(FName StateOfMatch, float Warmup, float Match,float Cooldown, float StartingTime);
+
+	void HighPingWarning();
+	void StopHighPingWarning();
+	void CheckPing(float DeltaTime);
 private:
 	UPROPERTY()
 	ABlasterHUD* BlasterHUD;
@@ -109,4 +119,20 @@ private:
 	FTimerHandle CountdownBlinkTimerHandle;
 
 	void BlinkCountdownText();
+
+	float HighPingRunningTime = 0.f;
+
+	UPROPERTY(EditAnywhere)
+	float HighPingDuration = 5.f;
+
+	float PingAnimationRunningTime = 0.f;
+
+	UPROPERTY(EditAnywhere)
+	float CheckPingFrequency = 20.f;
+
+	UFUNCTION(Server,Reliable)
+	void ServerReportPingStatus(bool bHighPing);
+
+	UPROPERTY(EditAnywhere)
+	float HighPingThreshold = 100.f;
 };

@@ -4,12 +4,13 @@
 #include "Weapon.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Blaster/Character/BlasterCharacter.h"
 #include "Blaster/PlayerController/BlasterPlayerController.h"
 #include "Blaster/BlasterComponents/CombatComponent.h"
 #include "Animation/AnimationAsset.h"
-#include "Components/SkeletalMeshComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Casing.h"
 
@@ -52,13 +53,11 @@ void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (GetLocalRole() == ENetRole::ROLE_Authority)
-	{
-		AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		AreaSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
-		AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnSphereOverlap);
-		AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AWeapon::OnSphereEndOverlap);
-	}
+	AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	AreaSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+	AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnSphereOverlap);
+	AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AWeapon::OnSphereEndOverlap);
+
 	if (PickupWidget)
 	{
 		PickupWidget->SetVisibility(false);
@@ -78,7 +77,7 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AWeapon, WeaponState);
-	DOREPLIFETIME(AWeapon, Ammo);
+	DOREPLIFETIME_CONDITION(AWeapon, bUseServerSideRewind, COND_OwnerOnly);
 }
 
 void AWeapon::OnRep_Owner()
@@ -147,10 +146,23 @@ void AWeapon::Dropped()
 	BlasterOwnerController = nullptr;
 }
 
-void AWeapon::AddAmmo(int32 AmmoToAdd)
+
+
+FVector AWeapon::TraceEndWithScatter(const FVector& HitTarget)
 {
-	Ammo = FMath::Clamp(Ammo - AmmoToAdd, 0, MagCapacity);
-	SetHUDAmmo();
+	const USkeletalMeshSocket* MuzzleFlashSocket = GetWeaponMesh()->GetSocketByName("MuzzleFlash");
+	if (!IsValid(MuzzleFlashSocket)) return FVector();
+
+	const FTransform SocketTransform = MuzzleFlashSocket->GetSocketTransform(GetWeaponMesh());
+	const FVector TraceStart = SocketTransform.GetLocation();
+
+	const FVector ToTargetNormalized = (HitTarget - TraceStart).GetSafeNormal();
+	const FVector SphereCenter = TraceStart + ToTargetNormalized * DistanceToSphere;
+	const FVector RandVec = UKismetMathLibrary::RandomUnitVector() * FMath::FRandRange(0.f, SphereRadius);
+	const FVector EndLoc = SphereCenter + RandVec;
+	const FVector ToEndLoc = EndLoc - TraceStart;
+
+	return FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size());
 }
 
 void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -175,6 +187,11 @@ void AWeapon::SetWeaponState(EWeaponState State)
 {
 	WeaponState = State;
 	OnWeaponStateSet();
+}
+
+void AWeapon::OnPingTooHigh(bool bPingTooHigh)
+{
+	bUseServerSideRewind = !bPingTooHigh;
 }
 
 void AWeapon::OnRep_WeaponState()
@@ -212,6 +229,16 @@ void AWeapon::OnEquipped()
 		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	}
 	EnableCustomDepth(false);
+
+	BlasterOwnerCharacter = IsValid(BlasterOwnerCharacter) ? BlasterOwnerCharacter : Cast<ABlasterCharacter>(GetOwner());
+	if (BlasterOwnerCharacter&&bUseServerSideRewind)
+	{
+		BlasterOwnerController = IsValid(BlasterOwnerController) ? BlasterOwnerController : Cast<ABlasterPlayerController>(BlasterOwnerCharacter->GetController());
+		if (BlasterOwnerController&&HasAuthority()&&!BlasterOwnerController->HighPingDelegate.IsBound())
+		{
+			BlasterOwnerController->HighPingDelegate.AddDynamic(this, &AWeapon::OnPingTooHigh);
+		}
+	}
 }
 
 void AWeapon::OnEquippedSecondary()
@@ -228,6 +255,16 @@ void AWeapon::OnEquippedSecondary()
 		WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	}
 	EnableCustomDepth(false);
+
+	BlasterOwnerCharacter = IsValid(BlasterOwnerCharacter) ? BlasterOwnerCharacter : Cast<ABlasterCharacter>(GetOwner());
+	if (BlasterOwnerCharacter && bUseServerSideRewind)
+	{
+		BlasterOwnerController = IsValid(BlasterOwnerController) ? BlasterOwnerController : Cast<ABlasterPlayerController>(BlasterOwnerCharacter->GetController());
+		if (BlasterOwnerController && HasAuthority() && BlasterOwnerController->HighPingDelegate.IsBound())
+		{
+			BlasterOwnerController->HighPingDelegate.RemoveDynamic(this, &AWeapon::OnPingTooHigh);
+		}
+	}
 }
 
 void AWeapon::OnDropped()
@@ -252,6 +289,17 @@ void AWeapon::OnDropped()
 		WeaponMesh->SetCustomDepthStencilValue(CUSTOM_DEPTH_BLUE);
 		WeaponMesh->MarkRenderStateDirty();
 		EnableCustomDepth(true);
+		Sequence = 0; // just in case.
+	}
+
+	BlasterOwnerCharacter = IsValid(BlasterOwnerCharacter) ? BlasterOwnerCharacter : Cast<ABlasterCharacter>(GetOwner());
+	if (BlasterOwnerCharacter && bUseServerSideRewind)
+	{
+		BlasterOwnerController = IsValid(BlasterOwnerController) ? BlasterOwnerController : Cast<ABlasterPlayerController>(BlasterOwnerCharacter->GetController());
+		if (BlasterOwnerController && HasAuthority() && BlasterOwnerController->HighPingDelegate.IsBound())
+		{
+			BlasterOwnerController->HighPingDelegate.RemoveDynamic(this, &AWeapon::OnPingTooHigh);
+		}
 	}
 }
 
@@ -268,14 +316,58 @@ void AWeapon::SetHUDAmmo()
 	}
 }
 
-void AWeapon::SpendRound()
+void AWeapon::ClientUpdateAmmo_Implementation(int32 ServerAmmo)
 {
-	Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+	if (HasAuthority()) return;
+	Ammo = ServerAmmo;
+	--Sequence;
+	Ammo -= Sequence;
+	//UE_LOG(LogTemp, Warning, TEXT("Sequence: %d"), Sequence);
+	//UE_LOG(LogTemp, Warning, TEXT("After Ammo -= Sequence,the Ammo: %d"), Ammo);
 	SetHUDAmmo();
 }
 
-void AWeapon::OnRep_Ammo()
+void AWeapon::SpendRound()
 {
+	/*if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Client Before update Ammo variable,Ammo:%d"), Ammo);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server Before update Ammo variable,Ammo:%d"), Ammo);
+	}*/
+	Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);  // execute twice,Client first,then Server.
+	/*if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Client After update Ammo variable,Ammo:%d"), Ammo);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Server After update Ammo variable,Ammo:%d"), Ammo);
+	}*/
+	SetHUDAmmo();
+	if (HasAuthority())
+	{
+		ClientUpdateAmmo(Ammo);
+	}
+	else if(BlasterOwnerCharacter&&BlasterOwnerCharacter->IsLocallyControlled())
+	{
+		++Sequence;
+	}
+}
+
+void AWeapon::AddAmmo(int32 AmmoToAdd)
+{
+	Ammo = FMath::Clamp(Ammo + AmmoToAdd, 0, MagCapacity);
+	SetHUDAmmo();
+	ClientAddAmmo(AmmoToAdd);
+}
+
+void AWeapon::ClientAddAmmo_Implementation(int32 AmmoToAdd)
+{
+	if (HasAuthority()) return;
+	Ammo = FMath::Clamp(Ammo + AmmoToAdd, 0, MagCapacity);
 	BlasterOwnerCharacter = IsValid(BlasterOwnerCharacter) ? BlasterOwnerCharacter : Cast<ABlasterCharacter>(GetOwner());
 	if (BlasterOwnerCharacter && BlasterOwnerCharacter->GetCombat() && IsFull())
 	{
@@ -283,8 +375,6 @@ void AWeapon::OnRep_Ammo()
 	}
 	SetHUDAmmo();
 }
-
-
 
 bool AWeapon::IsEmpty()
 {

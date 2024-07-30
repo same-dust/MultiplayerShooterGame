@@ -5,8 +5,9 @@
 #include "CoreMinimal.h"
 
 #define ECC_SkeletalMesh ECollisionChannel::ECC_GameTraceChannel1
+#define ECC_HitBox ECollisionChannel::ECC_GameTraceChannel2
 
-
+// must deep understand the collision of unreal engine. it's useful and important.
 
 // UE5的一些操作
 

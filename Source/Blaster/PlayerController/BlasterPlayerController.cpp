@@ -14,6 +14,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 
@@ -32,6 +33,48 @@ void ABlasterPlayerController::Tick(float DeltaTime)
 	SetHUDTime();
 	CheckTimeSync(DeltaTime);
 	PollInit();
+	CheckPing(DeltaTime);
+}
+
+void ABlasterPlayerController::CheckPing(float DeltaTime)
+{
+	HighPingRunningTime += DeltaTime;
+	if (HighPingRunningTime > CheckPingFrequency)
+	{
+		PlayerState = IsValid(PlayerState) ? PlayerState : *GetPlayerState<APlayerState>();
+		if (PlayerState)
+		{
+			// UE_LOG(LogTemp, Warning, TEXT("PlayerState->GetPingInMilliseconds(): %d"), PlayerState->GetPingInMilliseconds());
+			if (PlayerState->GetPingInMilliseconds() > HighPingThreshold)
+			{
+				HighPingWarning();
+				PingAnimationRunningTime = 0.f;
+				ServerReportPingStatus(true);
+			}
+			else
+			{
+				ServerReportPingStatus(false);
+			}
+		}
+		HighPingRunningTime = 0.f;
+	}
+	bool bHighPingAnimationPlaying =
+		BlasterHUD && BlasterHUD->CharacterOverlay &&
+		BlasterHUD->CharacterOverlay->HighPingAnimation &&
+		BlasterHUD->CharacterOverlay->IsAnimationPlaying(BlasterHUD->CharacterOverlay->HighPingAnimation);
+	if (bHighPingAnimationPlaying)
+	{
+		PingAnimationRunningTime += DeltaTime;
+		if (PingAnimationRunningTime > HighPingDuration)
+		{
+			StopHighPingWarning();
+		}
+	}
+}
+
+void ABlasterPlayerController::ServerReportPingStatus_Implementation(bool bHighPing)
+{
+	HighPingDelegate.Broadcast(bHighPing);
 }
 
 void ABlasterPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -50,6 +93,43 @@ void ABlasterPlayerController::CheckTimeSync(float DeltaTime)
 		TimeSyncRunningTime = 0.f;
 	}
 }
+
+void ABlasterPlayerController::HighPingWarning()
+{
+	BlasterHUD = IsValid(BlasterHUD) ? BlasterHUD : Cast<ABlasterHUD>(GetHUD());
+
+	bool bHUDValid = BlasterHUD &&
+		BlasterHUD->CharacterOverlay &&
+		BlasterHUD->CharacterOverlay->HighPingImage &&
+		BlasterHUD->CharacterOverlay->HighPingAnimation;
+	if (bHUDValid)
+	{
+		BlasterHUD->CharacterOverlay->HighPingImage->SetOpacity(1.f);
+		BlasterHUD->CharacterOverlay->PlayAnimation(BlasterHUD->CharacterOverlay->HighPingAnimation,
+			0.f,
+			5);
+	}
+}
+
+void ABlasterPlayerController::StopHighPingWarning()
+{
+	BlasterHUD = IsValid(BlasterHUD) ? BlasterHUD : Cast<ABlasterHUD>(GetHUD());
+
+	bool bHUDValid = BlasterHUD &&
+		BlasterHUD->CharacterOverlay &&
+		BlasterHUD->CharacterOverlay->HighPingImage &&
+		BlasterHUD->CharacterOverlay->HighPingAnimation;
+	if (bHUDValid)
+	{
+		BlasterHUD->CharacterOverlay->HighPingImage->SetOpacity(0.f);
+		if (BlasterHUD->CharacterOverlay->IsAnimationPlaying(BlasterHUD->CharacterOverlay->HighPingAnimation))
+		{
+			BlasterHUD->CharacterOverlay->StopAnimation(BlasterHUD->CharacterOverlay->HighPingAnimation);
+		}
+	}
+}
+
+
 
 void ABlasterPlayerController::ClientJoinMidgame_Implementation(FName StateOfMatch,float Warmup,float Match, float Cooldown, float StartingTime)
 {
@@ -228,7 +308,8 @@ void ABlasterPlayerController::ServerRequestServerTime_Implementation(float Time
 void ABlasterPlayerController::ClientReportServerTime_Implementation(float TimeOfClientRequest, float TimeServerReceivedClientRequest)
 {
 	float RoundTripTime = GetWorld()->GetTimeSeconds() - TimeOfClientRequest;
-	float CurrentServerTime = TimeServerReceivedClientRequest + (0.5f * RoundTripTime);
+	SingleTripTime = RoundTripTime * 0.5f;
+	float CurrentServerTime = TimeServerReceivedClientRequest + SingleTripTime;
 	ClientServerDelta = CurrentServerTime - GetWorld()->GetTimeSeconds();
 }
 
@@ -407,7 +488,7 @@ void ABlasterPlayerController::SetHUDAnnouncementCountdown(int32 CountdownTime)
 			return;
 		}
 		int32 Minutes = CountdownTime / 60;
-		int32 Seconds = CountdownTime - Minutes * 60-1;
+		int32 Seconds = FMath::Clamp(CountdownTime - Minutes * 60 - 1, 0, 11);
 		FString CountdownText = FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds);
 		BlasterHUD->Announcement->WarmupTime->SetText(FText::FromString(CountdownText));
 	}

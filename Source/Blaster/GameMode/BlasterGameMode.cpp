@@ -92,7 +92,6 @@ void ABlasterGameMode::PlayerEliminated(ABlasterCharacter* ElimmedCharacter, ABl
 	if (VictimPlayerState)
 	{
 		VictimPlayerState->AddToDefeats(1);
-		//UE_LOG(LogTemp, Warning, TEXT("%s Defeats: %d"),*VictimPlayerState->GetPlayerName(), VictimPlayerState->GetDefeats());
 	}
 	
 	if (ElimmedCharacter)
