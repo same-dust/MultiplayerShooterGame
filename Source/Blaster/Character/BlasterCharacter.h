@@ -7,10 +7,12 @@
 #include "InputActionValue.h"
 #include "Blaster/BlasterTypes/TurningInPlace.h"
 #include "Blaster/BlasterTypes/CombatState.h"
+#include "Blaster/BlasterTypes/Team.h"
 #include "Blaster/Interfaces/InteractWithCrosshairsInterface.h"
 #include "Components/TimelineComponent.h"
 #include "BlasterCharacter.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLeftGame);
 
 // Forward Declaration
 class UInputAction;
@@ -24,10 +26,13 @@ class UBuffComponent;
 class UAnimMontage;
 class ABlasterPlayerController;
 class ABlasterPlayerState;
+class ABlasterGameMode;
 class AController;
 class USoundCue;
 class UBoxComponent;
 class ULagCompensationComponent;
+class UNiagaraSystem;
+class UNiagaraComponent;
 
 UCLASS()
 class BLASTER_API ABlasterCharacter : public ACharacter,public IInteractWithCrosshairsInterface
@@ -57,9 +62,9 @@ public:
 	void PlaySwapMontage();
 
 	virtual void OnRep_ReplicatedMovement() override;
-	void Elim();
+	void Elim(bool bPlayerLeftGame);
 	UFUNCTION(NetMulticast,Reliable)
-	void MulticastElim();
+	void MulticastElim(bool bPlayerLeftGame);
 	virtual void Destroyed() override;
 
 	UPROPERTY(Replicated)
@@ -74,6 +79,19 @@ public:
 	TMap<FName, UBoxComponent*> HitCollisionBoxes;
 
 	bool bFinishedSwapping = false;
+
+	UFUNCTION(Server, Reliable)
+	void ServerLeftGame();
+
+	FOnLeftGame OnLeftGame;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastGainedTheLead();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastLostTheLead();
+
+	void SetTeamColor(ETeam Team);
 protected:
 	virtual void BeginPlay() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
@@ -126,6 +144,8 @@ protected:
 	void CalculateAO_Pitch();
 	void SimProxiesTurn();
 	void PlayHitReactMontage();
+	void SetSpawnPoint();
+	void OnPlayerStateInitialized();
 	
 	UFUNCTION()
 	void ReceiveDamage(AActor* DamagedActor,float Damage,const UDamageType* DamageType,AController* InstigatorController,AActor* DamageCauser);
@@ -303,6 +323,11 @@ private:
 
 	void ElimTimerFinished();
 
+	bool bLeftGame = false;
+
+	
+
+	
 	/**
 	* Dissolve effect
 	*/
@@ -322,11 +347,31 @@ private:
 	UMaterialInstanceDynamic* DynamicDissolveMaterialInstance;
 
 	// Material instance set on the Blueprint, used with the dynamic material instance
-	UPROPERTY(EditAnywhere, Category = Elim)
+	UPROPERTY(VisibleAnywhere, Category = Elim)
 	UMaterialInstance* DissolveMaterialInstance;
 
 	/**
-	* Elim bot
+	* Team colors
+	*/
+
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* RedDissolveMatInst;
+
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* RedMaterial;
+
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* BlueDissolveMatInst;
+
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* BlueMaterial;
+
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* OriginalMaterial;
+
+
+	/**
+	* Elim Effects
 	*/
 	UPROPERTY(EditAnywhere)
 	UParticleSystem* ElimBotEffect;
@@ -339,6 +384,12 @@ private:
 
 	UPROPERTY()
 	ABlasterPlayerState* BlasterPlayerState;
+
+	UPROPERTY(EditAnywhere)
+	UNiagaraSystem* CrownSystem;
+	
+	UPROPERTY()
+	UNiagaraComponent* CrownComponent;
 
 	/**
 	* Grenade
@@ -353,6 +404,8 @@ private:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AWeapon> DefaultWeaponClass;
 
+	UPROPERTY()
+	ABlasterGameMode* BlasterGameMode;
 public:	
 	UPROPERTY(BlueprintReadOnly, Replicated)
 	FString PlayerName;
@@ -382,6 +435,9 @@ public:
 	FORCEINLINE float GetMaxShield() const { return MaxShield; }
 	bool IsLocallyReloading();
 	FORCEINLINE ULagCompensationComponent* GetLagCompensation() const { return LagCompensation; }
+	FORCEINLINE bool IsHoldingTheFlag() const;
+	ETeam GetTeam();
+	void SetHoldingTheFlag(bool bHolding);
 };
 
 
