@@ -16,7 +16,7 @@
 
 **tips：**由于这是基于steam平台的，所以如果想要两人以上通过网络联机游玩。要确保steam开启且在同一个steam region（即下载地区，如下图）
 
-![](./image/steam region.png)
+![](./image/SteamRegion.png)
 
 点开打包的可执行文件后，会进入GameStartupMap，即开始界面
 
