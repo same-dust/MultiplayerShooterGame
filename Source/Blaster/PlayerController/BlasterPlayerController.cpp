@@ -93,7 +93,7 @@ void ABlasterPlayerController::InitializeInputMappingContext()
 		{
 			if (Subsystem)
 			{
-				UE_LOG(LogTemp, Warning, TEXT("reach Subsystem!!!,%d"), HasAuthority());
+				//UE_LOG(LogTemp, Warning, TEXT("reach Subsystem!!!,%d"), HasAuthority());
 				Subsystem->AddMappingContext(ControllerContext, 1);
 			}
 			else
@@ -190,7 +190,9 @@ void ABlasterPlayerController::OnRep_ShowTeamScores()
 {
 	if (bShowTeamScores)
 	{
-		InitTeamScores();
+		// can't reach CharacterOverlay if just call InitTeamScores(),so we call it next tick.
+		GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ABlasterPlayerController::InitTeamScores);
+		//InitTeamScores();
 	}
 	else
 	{
@@ -235,6 +237,8 @@ void ABlasterPlayerController::InitTeamScores()
 		BlasterHUD->CharacterOverlay->RedTeamScore &&
 		BlasterHUD->CharacterOverlay->BlueTeamScore &&
 		BlasterHUD->CharacterOverlay->ScoreSpacerText;
+	//if (!HasAuthority()) UE_LOG(LogTemp, Warning, TEXT("Client BlasterHUD %d"), IsValid(BlasterHUD));
+	//if (!HasAuthority()) UE_LOG(LogTemp, Warning, TEXT("Client BlasterHUD->CharacterOverlay %d"), IsValid(BlasterHUD->CharacterOverlay));
 	if (bHUDValid)
 	{
 		FString Zero("0");
@@ -270,7 +274,6 @@ void ABlasterPlayerController::SetHUDBlueTeamScore(int32 BlueScore)
 		BlasterHUD->CharacterOverlay->BlueTeamScore->SetText(FText::FromString(ScoreText));
 	}
 }
-
 
 void ABlasterPlayerController::CheckTimeSync(float DeltaTime)
 {
@@ -316,8 +319,6 @@ void ABlasterPlayerController::StopHighPingWarning()
 		}
 	}
 }
-
-
 
 void ABlasterPlayerController::ClientJoinMidgame_Implementation(FName StateOfMatch,float Warmup,float Match, float Cooldown, float StartingTime)
 {
@@ -404,6 +405,7 @@ void ABlasterPlayerController::HandleMatchHasStarted(bool bTeamsMatch)
 		}
 	}
 	if (!HasAuthority()) return;
+	// the change don't duplicated to client if GameMode is FreeForAll.Because the bShowTeamScores's default value is false,cause no change.the replication doesn't happen.
 	if (bTeamsMatch)
 	{
 		InitTeamScores();

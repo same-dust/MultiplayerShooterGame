@@ -180,7 +180,7 @@ private:
 	int32 Ammo;
 
 	UFUNCTION(Client,Reliable)
-	void ClientUpdateAmmo(int32 ServerAmmo);
+	void ClientUpdateAmmo(int32 ServerAmmo); // get the server ammo from server to client
 
 	UFUNCTION(Client, Reliable)
 	void ClientAddAmmo(int32 AmmoToAdd);
