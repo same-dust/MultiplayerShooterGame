@@ -90,4 +90,4 @@ T键是扔手雷。ESC是退出游戏（允许中途正常退出）
 
 ## 实机联机演示视频地址
 
-[UE5多人射击游戏联机演示_网络游戏热门视频 (bilibili.com)](https://www.bilibili.com/video/BV1NKYseQEcY/?spm_id_from=333.999.0.0&vd_source=6bb21558c14da4c060df417c22059c6c)
+[UE5多人射击游戏联机演示 (bilibili.com)](https://www.bilibili.com/video/BV1NKYseQEcY/?spm_id_from=333.999.0.0&vd_source=6bb21558c14da4c060df417c22059c6c)
