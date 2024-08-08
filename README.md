@@ -87,3 +87,7 @@ T键是扔手雷。ESC是退出游戏（允许中途正常退出）
 - 在玩家的网络差到一定程度时，就会出现HighPing Warning，此时为了防止HighPing战神的出现，将不会对这些网络过于差劲的玩家进行server-side rewind。也就是对这些玩家禁用LagCompensation技术。
 
 ![](./image/HighPingWarning.png)
+
+## 实机联机演示视频地址
+
+[UE5多人射击游戏联机演示_网络游戏热门视频 (bilibili.com)](https://www.bilibili.com/video/BV1NKYseQEcY/?spm_id_from=333.999.0.0&vd_source=6bb21558c14da4c060df417c22059c6c)
