@@ -18,6 +18,10 @@
 #include "Blaster/BlasterComponents/CombatComponent.h"
 #include "Blaster/BlasterComponents/BuffComponent.h"
 #include "Blaster/BlasterComponents/LagCompensationComponent.h"
+#include "Blaster/BlasterComponents/BlasterAbilitySystemComponent.h"
+#include "Blaster/Abilities/BlasterAttributeSet.h"
+#include "Blaster/Abilities/BlasterGameplayAbility.h"
+#include "Blaster/BlasterTypes/BlasterAbilityInput.h"
 #include "Blaster/PlayerController/BlasterPlayerController.h"
 #include "Blaster/PlayerState/BlasterPlayerState.h"
 #include "Blaster/PlayerStart/TeamPlayerStart.h"
@@ -36,6 +40,8 @@
 // Sets default values
 ABlasterCharacter::ABlasterCharacter()
 {
+	bAbilitiesInitialized = false;
+
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	SpawnCollisionHandlingMethod = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
@@ -62,6 +68,12 @@ ABlasterCharacter::ABlasterCharacter()
 	Buff->SetIsReplicated(true);
 
 	LagCompensation = CreateDefaultSubobject<ULagCompensationComponent>(TEXT("LagCompentation")); // server only
+
+	AbilitySystemComponent = CreateDefaultSubobject<UBlasterAbilitySystemComponent>(TEXT("Ability System"));
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
+	BlasterAttributes = CreateDefaultSubobject<UBlasterAttributeSet>(TEXT("Attributes"));
 
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
@@ -307,7 +319,7 @@ void ABlasterCharacter::PostInitializeComponents()
 void ABlasterCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-
+	// we actually don't need to check HasAuthority(),because it's accessed only by server,whatever,just keep it
 	//Add Input Mapping Context (Listen Server)
 	if (HasAuthority())
 	{
@@ -321,6 +333,34 @@ void ABlasterCharacter::PossessedBy(AController* NewController)
 		UpdateHUDGrenades(); // Work well on the Server when respawn.
 	}
 	
+	// Server GAS init
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		AddStartupGameplayAbilities();
+	}
+}
+
+void ABlasterCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	// Client GAS init
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	}
+
+	if (AbilitySystemComponent && InputComponent)
+	{
+		const FGameplayAbilityInputBinds Binds(
+			"Confirm",
+			"Cancel",
+			FTopLevelAssetPath(GetPathNameSafe(UClass::TryFindTypeSlow<UEnum>("EBlasterAbilityInput"))),
+			StaticCast<int32>(EBlasterAbilityInput::EBAI_Confirm),
+			StaticCast<int32>(EBlasterAbilityInput::EBAI_Cancel)
+		);
+		AbilitySystemComponent->BindAbilityActivationToInputComponent(InputComponent, Binds);
+	}
 }
 
 void ABlasterCharacter::PlayFireMontage(bool bAiming)
@@ -590,7 +630,7 @@ void ABlasterCharacter::UpdateHUDHealth()
 	BlasterPlayerController = IsValid(BlasterPlayerController) ? BlasterPlayerController : Cast<ABlasterPlayerController>(Controller);
 	if (BlasterPlayerController)
 	{
-		BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
+		BlasterPlayerController->SetHUDHealth(GetHealth(), GetMaxHealth());
 	}
 }
 
@@ -682,6 +722,17 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &ABlasterCharacter::GrenadeButtonPressed);
 	}
 
+	if (AbilitySystemComponent && InputComponent)
+	{
+		const FGameplayAbilityInputBinds Binds(
+			"Confirm",
+			"Cancel",
+			FTopLevelAssetPath(GetPathNameSafe(UClass::TryFindTypeSlow<UEnum>("EBlasterAbilityInput"))),
+			StaticCast<int32>(EBlasterAbilityInput::EBAI_Confirm),
+			StaticCast<int32>(EBlasterAbilityInput::EBAI_Cancel)
+		);
+		AbilitySystemComponent->BindAbilityActivationToInputComponent(InputComponent, Binds);
+	}
 }
 
 void ABlasterCharacter::Jump()
@@ -1001,12 +1052,12 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 		}
 	}
 
-	Health = FMath::Clamp(Health - DamageToHealth, 0.f, MaxHealth);
+	Health = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
 	UpdateHUDHealth();
 	UpdateHUDShield();
 	PlayHitReactMontage();
 
-	if (Health == 0.f)
+	if (GetHealth() == 0.f)
 	{
 		
 		if (BlasterGameMode)
@@ -1107,6 +1158,46 @@ void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 
 }
 
+UAbilitySystemComponent* ABlasterCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
+void ABlasterCharacter::AddStartupGameplayAbilities()
+{
+	check(AbilitySystemComponent);
+
+	if (GetLocalRole() == ROLE_Authority && !bAbilitiesInitialized)
+	{
+		// Grant abilities,but only on the server
+		for (TSubclassOf<UBlasterGameplayAbility>& StartupAbility : BlasterGameplayAbilities)
+		{
+			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(
+				StartupAbility, 1,
+				StaticCast<int32>(StartupAbility.GetDefaultObject()->AbilityInputID),
+				this));
+		}
+
+		// Now apply passives
+		for (const TSubclassOf<UGameplayEffect>& GameplayEffect : PassiveGameplayEffects)
+		{
+			FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+			EffectContext.AddSourceObject(this);
+
+			FGameplayEffectSpecHandle NewHandle = AbilitySystemComponent->MakeOutgoingSpec(GameplayEffect, 1, EffectContext);
+
+			if (NewHandle.IsValid())
+			{
+				FActiveGameplayEffectHandle ActiveGameplayEffectHandle =
+					AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(
+						*NewHandle.Data.Get(), AbilitySystemComponent
+					);
+			}
+		}
+		bAbilitiesInitialized = true;
+	}
+}
+
 void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
 	if (OverlappingWeapon)
@@ -1139,6 +1230,25 @@ FVector ABlasterCharacter::GetHitTarget() const
 {
 	if (Combat == nullptr) return FVector();
 	return Combat->HitTarget;
+}
+
+float ABlasterCharacter::GetHealth() const
+{
+	return Health;
+	if (BlasterAttributes)
+	{
+		return BlasterAttributes->GetHealth();
+	}
+	
+}
+
+float ABlasterCharacter::GetMaxHealth() const
+{
+	return MaxHealth;
+	if (BlasterAttributes)
+	{
+		return BlasterAttributes->GetMaxHealth();
+	}
 }
 
 ECombatState ABlasterCharacter::GetCombatState() const

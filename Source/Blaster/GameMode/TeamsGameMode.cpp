@@ -58,7 +58,7 @@ void ATeamsGameMode::PlayerEliminated(ABlasterCharacter* ElimmedCharacter, ABlas
 {
 	Super::PlayerEliminated(ElimmedCharacter, VictimController, AttackerController);
 
-	if (VictimController == AttackerController) return; // è‡ªæ€ä¸ç®—å›¢é˜Ÿåˆ†
+	if (VictimController == AttackerController) return; // ×ÔÉ±²»ËãÍÅ¶Ó·Ö
 	ABlasterGameState* BGameState = Cast<ABlasterGameState>(UGameplayStatics::GetGameState(this));
 	ABlasterPlayerState* AttackerPlayerState = AttackerController ? Cast<ABlasterPlayerState>(AttackerController->PlayerState) : nullptr;
 	if (BGameState && AttackerPlayerState)

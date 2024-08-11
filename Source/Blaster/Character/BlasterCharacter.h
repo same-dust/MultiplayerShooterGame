@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "AbilitySystemInterface.h"
 #include "Blaster/BlasterTypes/TurningInPlace.h"
 #include "Blaster/BlasterTypes/CombatState.h"
 #include "Blaster/BlasterTypes/Team.h"
@@ -17,6 +18,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLeftGame);
 // Forward Declaration
 class UInputAction;
 class UInputMappingContext;
+class UInputComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UWidgetComponent;
@@ -33,9 +35,13 @@ class UBoxComponent;
 class ULagCompensationComponent;
 class UNiagaraSystem;
 class UNiagaraComponent;
+class UBlasterAbilitySystemComponent;
+class UBlasterGameplayAbility;
+class UBlasterAttributeSet;
+class UGameplayEffect;
 
 UCLASS()
-class BLASTER_API ABlasterCharacter : public ACharacter,public IInteractWithCrosshairsInterface
+class BLASTER_API ABlasterCharacter : public ACharacter,public IInteractWithCrosshairsInterface,public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -47,10 +53,10 @@ public:
 	void UpdateHUDShield();
 	void UpdateHUDAmmo();
 	void UpdateHUDGrenades();
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PostInitializeComponents() override;
-	virtual void PossessedBy(AController* NewController) override;
+	friend UBlasterAttributeSet;
 	
 	/**
 	* Play Montages
@@ -94,6 +100,8 @@ public:
 	void SetTeamColor(ETeam Team);
 protected:
 	virtual void BeginPlay() override;
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputMappingContext* BlasterContext;
 
@@ -211,6 +219,21 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	UBoxComponent* foot_r;
+
+	/**
+	* Ability System
+	*/
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	void AddStartupGameplayAbilities();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TArray<TSubclassOf<UGameplayEffect>> PassiveGameplayEffects;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
+	TArray<TSubclassOf<UBlasterGameplayAbility>> BlasterGameplayAbilities;
+
+	UPROPERTY()
+	bool bAbilitiesInitialized;
 private:
 	UPROPERTY(VisibleAnywhere,Category=Camera)
 	USpringArmComponent* CameraBoom;
@@ -233,6 +256,12 @@ private:
 
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UCombatComponent* Combat;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UBlasterAbilitySystemComponent> AbilitySystemComponent;
+
+	UPROPERTY()
+	TObjectPtr<UBlasterAttributeSet> BlasterAttributes;
 
 	UPROPERTY(VisibleAnywhere)
 	UBuffComponent* Buff;
@@ -325,9 +354,6 @@ private:
 
 	bool bLeftGame = false;
 
-	
-
-	
 	/**
 	* Dissolve effect
 	*/
@@ -421,9 +447,9 @@ public:
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
-	FORCEINLINE float GetHealth() const { return Health; }
+	FORCEINLINE float GetHealth() const;
 	FORCEINLINE void SetHealth(float Amount) { Health = Amount; } 
-	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
+	FORCEINLINE float GetMaxHealth() const;
 	ECombatState GetCombatState() const;
 	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
 	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
