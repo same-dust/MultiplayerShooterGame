@@ -7,6 +7,8 @@
 #include "AttributeSet.h"
 #include "BlasterAttributeSet.generated.h"
 
+class ABlasterCharacter;
+
 // Uses macros from Attributes.h
 #define ATTRIBUTE_ACCESSORS(ClassName,PropertyName) \
 	GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName,PropertyName) \
@@ -28,7 +30,9 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
-
+	void AdjustAttributeForMaxChange(const FGameplayAttributeData& AffectedAttribute, const FGameplayAttributeData& MaxAttribute, float NewMaxValue, const FGameplayAttribute& AffectedAttributeProperty) const; // to adjust damage that less equal MaxHealth
+	
+	
 	/**
 	* Player health
 	*/
@@ -40,11 +44,30 @@ public:
 	FGameplayAttributeData MaxHealth;
 	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, MaxHealth);
 
-	void AdjustAttributeForMaxChange(const FGameplayAttributeData& AffectedAttribute,const FGameplayAttributeData& MaxAttribute,float NewMaxValue,const FGameplayAttribute& AffectedAttributeProperty) const; // to adjust damage that less equal MaxHealth
-
 	UFUNCTION()
 	virtual void OnRep_Health(const FGameplayAttributeData& LastHealth);
 
 	UFUNCTION()
 	virtual void OnRep_MaxHealth(const FGameplayAttributeData& LastMaxHealth);
+
+	/**
+	* Player shield
+	*/
+
+	UPROPERTY(ReplicatedUsing = OnRep_MaxShield, VisibleAnywhere, Category = "Blaster Attributes")
+	FGameplayAttributeData MaxShield;
+	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, MaxShield);
+
+	UPROPERTY(ReplicatedUsing = OnRep_Shield, VisibleAnywhere, Category = "Blaster Attributes")
+	FGameplayAttributeData Shield;
+	ATTRIBUTE_ACCESSORS(UBlasterAttributeSet, Shield);
+
+	UFUNCTION()
+	void OnRep_Shield(const FGameplayAttributeData& LastShield);
+
+	UFUNCTION()
+	void OnRep_MaxShield(const FGameplayAttributeData& LastMaxShield);
+
+	UPROPERTY()
+	ABlasterCharacter* OwningCharacter;
 };

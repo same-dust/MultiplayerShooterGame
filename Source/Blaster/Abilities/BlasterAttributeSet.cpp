@@ -15,6 +15,8 @@ void UBlasterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UBlasterAttributeSet, Health);
 	DOREPLIFETIME(UBlasterAttributeSet, MaxHealth);
+	DOREPLIFETIME(UBlasterAttributeSet, Shield);
+	DOREPLIFETIME(UBlasterAttributeSet, MaxShield);
 }
 
 void UBlasterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -50,7 +52,7 @@ void UBlasterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 		TargetActor = Data.Target.AbilityActorInfo->AvatarActor.Get();
 		TargetCharacter = Cast<ABlasterCharacter>(TargetActor);
 	}
-
+	OwningCharacter = TargetCharacter;
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(), 0.f, GetMaxHealth()));
@@ -81,10 +83,34 @@ void UBlasterAttributeSet::AdjustAttributeForMaxChange(const FGameplayAttributeD
 void UBlasterAttributeSet::OnRep_Health(const FGameplayAttributeData& LastHealth)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, Health, LastHealth);
+
+	float CurrentHealth = Health.GetCurrentValue();
+	float PreviousHealth = LastHealth.GetCurrentValue();
+
+	OwningCharacter = IsValid(OwningCharacter) ? OwningCharacter : Cast<ABlasterCharacter>(GetOwningActor());
+	if (OwningCharacter)
+	{
+		OwningCharacter->UpdateHUDHealth();
+	}
+
+	if (CurrentHealth < PreviousHealth)
+	{
+		OwningCharacter->PlayHitReactMontage();
+	}
 }
 
 void UBlasterAttributeSet::OnRep_MaxHealth(const FGameplayAttributeData& LastMaxHealth)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, MaxHealth, LastMaxHealth);
+}
+
+void UBlasterAttributeSet::OnRep_Shield(const FGameplayAttributeData& LastShield)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, Shield, LastShield);
+}
+
+void UBlasterAttributeSet::OnRep_MaxShield(const FGameplayAttributeData& LastMaxShield)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, MaxShield, LastMaxShield);
 }
 

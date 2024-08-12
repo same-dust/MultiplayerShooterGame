@@ -185,7 +185,6 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);  // make the replicated only happen to the client which overlapping the weapons
-	DOREPLIFETIME(ABlasterCharacter, Health);
 	DOREPLIFETIME(ABlasterCharacter, Shield);
 	DOREPLIFETIME(ABlasterCharacter, bDisableGameplay);
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, PlayerName, COND_InitialOnly);
@@ -314,6 +313,10 @@ void ABlasterCharacter::PostInitializeComponents()
 			LagCompensation->Controller = Cast<ABlasterPlayerController>(Controller);
 		}
 	}
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->Character = this;
+	}
 }
 
 void ABlasterCharacter::PossessedBy(AController* NewController)
@@ -355,7 +358,7 @@ void ABlasterCharacter::OnRep_PlayerState()
 		const FGameplayAbilityInputBinds Binds(
 			"Confirm",
 			"Cancel",
-			FTopLevelAssetPath(GetPathNameSafe(UClass::TryFindTypeSlow<UEnum>("EBlasterAbilityInput"))),
+			FTopLevelAssetPath(GetPathNameSafe(UClass::TryFindTypeSlow<UEnum>("/Script/Blaster.EBlasterAbilityInput"))),
 			StaticCast<int32>(EBlasterAbilityInput::EBAI_Confirm),
 			StaticCast<int32>(EBlasterAbilityInput::EBAI_Cancel)
 		);
@@ -727,7 +730,7 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		const FGameplayAbilityInputBinds Binds(
 			"Confirm",
 			"Cancel",
-			FTopLevelAssetPath(GetPathNameSafe(UClass::TryFindTypeSlow<UEnum>("EBlasterAbilityInput"))),
+			FTopLevelAssetPath(GetPathNameSafe(UClass::TryFindTypeSlow<UEnum>("/Script/Blaster.EBlasterAbilityInput"))),
 			StaticCast<int32>(EBlasterAbilityInput::EBAI_Confirm),
 			StaticCast<int32>(EBlasterAbilityInput::EBAI_Cancel)
 		);
@@ -1051,8 +1054,8 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 			Shield = 0.f;
 		}
 	}
-
-	Health = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
+	SetHealth(FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth()));
+	//Health = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
 	UpdateHUDHealth();
 	UpdateHUDShield();
 	PlayHitReactMontage();
@@ -1099,14 +1102,6 @@ void ABlasterCharacter::OnPlayerStateInitialized()
 	SetSpawnPoint();
 }
 
-void ABlasterCharacter::OnRep_Health(float LastHealth)
-{
-	UpdateHUDHealth();
-	if (Health < LastHealth)
-	{
-		PlayHitReactMontage();
-	}	
-}
 
 void ABlasterCharacter::OnRep_Shield(float LastShield)
 {
@@ -1234,27 +1229,53 @@ FVector ABlasterCharacter::GetHitTarget() const
 
 float ABlasterCharacter::GetHealth() const
 {
-	return Health;
 	if (BlasterAttributes)
 	{
 		return BlasterAttributes->GetHealth();
 	}
-	
+	return -1.f;
+}
+
+void ABlasterCharacter::SetHealth(float Amount)
+{
+	if (BlasterAttributes)
+	{
+		BlasterAttributes->SetHealth(Amount);
+	}
 }
 
 float ABlasterCharacter::GetMaxHealth() const
 {
-	return MaxHealth;
 	if (BlasterAttributes)
 	{
 		return BlasterAttributes->GetMaxHealth();
 	}
+	return 100.f;
 }
 
 ECombatState ABlasterCharacter::GetCombatState() const
 {
 	if (!IsValid(Combat)) return ECombatState::ECS_MAX;
 	return Combat->CombatState;
+}
+
+float ABlasterCharacter::GetShield() const
+{
+	return Shield;
+	if (BlasterAttributes)
+	{
+		return BlasterAttributes->GetShield();
+	}
+	
+}
+
+float ABlasterCharacter::GetMaxShield() const
+{
+	return MaxShield;
+	if (BlasterAttributes)
+	{
+		return BlasterAttributes->GetMaxShield();
+	}
 }
 
 bool ABlasterCharacter::IsLocallyReloading()

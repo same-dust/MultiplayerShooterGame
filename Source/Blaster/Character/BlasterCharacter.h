@@ -316,18 +316,6 @@ private:
 	float CalculateSpeed();
 
 	/**
-	* Player health
-	*/ 
-	UPROPERTY(EditAnywhere, Category = "Player Stats")
-	float MaxHealth = 100.f;
-
-	UPROPERTY(ReplicatedUsing = OnRep_Health,VisibleAnywhere, Category = "Player Stats")
-	float Health = 100.f;
-
-	UFUNCTION()
-	void OnRep_Health(float LastHealth);
-
-	/**
 	* Player shield
 	*/
 
@@ -448,7 +436,7 @@ public:
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 	FORCEINLINE float GetHealth() const;
-	FORCEINLINE void SetHealth(float Amount) { Health = Amount; } 
+	FORCEINLINE void SetHealth(float Amount);
 	FORCEINLINE float GetMaxHealth() const;
 	ECombatState GetCombatState() const;
 	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
@@ -456,9 +444,9 @@ public:
 	FORCEINLINE UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
 	FORCEINLINE UStaticMeshComponent* GetAttachedGrenade() const { return AttachedGrenade; }
 	FORCEINLINE UBuffComponent* GetBuff() const { return Buff; }
-	FORCEINLINE float GetShield() const { return Shield; }
+	FORCEINLINE float GetShield() const;
 	FORCEINLINE void SetShield(float Amount) { Shield = Amount; }
-	FORCEINLINE float GetMaxShield() const { return MaxShield; }
+	FORCEINLINE float GetMaxShield() const;
 	bool IsLocallyReloading();
 	FORCEINLINE ULagCompensationComponent* GetLagCompensation() const { return LagCompensation; }
 	FORCEINLINE bool IsHoldingTheFlag() const;
