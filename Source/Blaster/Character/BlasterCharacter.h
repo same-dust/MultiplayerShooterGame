@@ -317,7 +317,7 @@ private:
 
 	/**
 	* Player shield
-	*/
+	
 
 	UPROPERTY(EditAnywhere, Category = "Player Stats")
 	float MaxShield = 200.f;
@@ -326,7 +326,7 @@ private:
 	float Shield = 0.f;
 
 	UFUNCTION()
-	void OnRep_Shield(float LastShield);
+	void OnRep_Shield(float LastShield);*/
 
 	UPROPERTY()
 	ABlasterPlayerController* BlasterPlayerController;
@@ -445,7 +445,7 @@ public:
 	FORCEINLINE UStaticMeshComponent* GetAttachedGrenade() const { return AttachedGrenade; }
 	FORCEINLINE UBuffComponent* GetBuff() const { return Buff; }
 	FORCEINLINE float GetShield() const;
-	FORCEINLINE void SetShield(float Amount) { Shield = Amount; }
+	FORCEINLINE void SetShield(float Amount);
 	FORCEINLINE float GetMaxShield() const;
 	bool IsLocallyReloading();
 	FORCEINLINE ULagCompensationComponent* GetLagCompensation() const { return LagCompensation; }

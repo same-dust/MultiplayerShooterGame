@@ -185,7 +185,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);  // make the replicated only happen to the client which overlapping the weapons
-	DOREPLIFETIME(ABlasterCharacter, Shield);
+	//DOREPLIFETIME(ABlasterCharacter, Shield);
 	DOREPLIFETIME(ABlasterCharacter, bDisableGameplay);
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, PlayerName, COND_InitialOnly);
 }
@@ -642,7 +642,7 @@ void ABlasterCharacter::UpdateHUDShield()
 	BlasterPlayerController = IsValid(BlasterPlayerController) ? BlasterPlayerController : Cast<ABlasterPlayerController>(Controller);
 	if (BlasterPlayerController)
 	{
-		BlasterPlayerController->SetHUDShield(Shield, MaxShield);
+		BlasterPlayerController->SetHUDShield(GetShield(), GetMaxShield());
 	}
 }
 
@@ -1041,21 +1041,23 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	Damage = BlasterGameMode->CalculateDamage(InstigatorController, Controller, Damage);
 
 	float DamageToHealth = Damage;
+	float Shield = GetShield();
 	if (Shield > 0.f)
 	{
 		if (Shield >= Damage)
 		{
-			Shield = FMath::Clamp(Shield - Damage, 0.f, MaxShield);
+			
+			Shield = FMath::Clamp(Shield - Damage, 0.f, GetMaxShield());
+			SetShield(Shield);
 			DamageToHealth = 0.f;
 		}
 		else
 		{			
 			DamageToHealth = FMath::Clamp(DamageToHealth - Shield, 0.f, Damage);
-			Shield = 0.f;
+			SetShield(0.f);
 		}
 	}
 	SetHealth(FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth()));
-	//Health = FMath::Clamp(GetHealth() - DamageToHealth, 0.f, GetMaxHealth());
 	UpdateHUDHealth();
 	UpdateHUDShield();
 	PlayHitReactMontage();
@@ -1103,14 +1105,14 @@ void ABlasterCharacter::OnPlayerStateInitialized()
 }
 
 
-void ABlasterCharacter::OnRep_Shield(float LastShield)
+/*void ABlasterCharacter::OnRep_Shield(float LastShield)
 {
 	UpdateHUDShield();
 	if (Shield < LastShield)
 	{
 		PlayHitReactMontage();
 	}
-}
+}*/
 
 
 
@@ -1261,21 +1263,28 @@ ECombatState ABlasterCharacter::GetCombatState() const
 
 float ABlasterCharacter::GetShield() const
 {
-	return Shield;
 	if (BlasterAttributes)
 	{
 		return BlasterAttributes->GetShield();
 	}
-	
+	return 0.f;
+}
+
+void ABlasterCharacter::SetShield(float Amount)
+{
+	if (BlasterAttributes)
+	{
+		BlasterAttributes->SetShield(Amount);
+	}
 }
 
 float ABlasterCharacter::GetMaxShield() const
 {
-	return MaxShield;
 	if (BlasterAttributes)
 	{
 		return BlasterAttributes->GetMaxShield();
 	}
+	return 200.f;
 }
 
 bool ABlasterCharacter::IsLocallyReloading()

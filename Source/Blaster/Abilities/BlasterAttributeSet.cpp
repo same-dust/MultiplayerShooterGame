@@ -26,6 +26,7 @@ void UBlasterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribut
 	if (Attribute == GetMaxHealthAttribute())
 	{
 		AdjustAttributeForMaxChange(Health, MaxHealth, NewValue, GetHealthAttribute());
+		AdjustAttributeForMaxChange(Shield, MaxShield, NewValue, GetShieldAttribute());
 	}
 }
 
@@ -59,6 +60,7 @@ void UBlasterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCal
 
 		if (TargetCharacter)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("Use PostGameplayEffectExecute"));
 			// HandleHealthChanged
 			
 			// TargetCharacter->SetHealth(DeltaValue, SourceTags); need to refactor the function
@@ -107,6 +109,20 @@ void UBlasterAttributeSet::OnRep_MaxHealth(const FGameplayAttributeData& LastMax
 void UBlasterAttributeSet::OnRep_Shield(const FGameplayAttributeData& LastShield)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UBlasterAttributeSet, Shield, LastShield);
+
+	float CurrentShield = Shield.GetCurrentValue();
+	float PreviousShield = LastShield.GetCurrentValue();
+
+	OwningCharacter = IsValid(OwningCharacter) ? OwningCharacter : Cast<ABlasterCharacter>(GetOwningActor());
+	if (OwningCharacter)
+	{
+		OwningCharacter->UpdateHUDShield();
+	}
+
+	if (CurrentShield < PreviousShield)
+	{
+		OwningCharacter->PlayHitReactMontage();
+	}
 }
 
 void UBlasterAttributeSet::OnRep_MaxShield(const FGameplayAttributeData& LastMaxShield)
