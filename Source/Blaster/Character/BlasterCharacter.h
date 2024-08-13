@@ -66,7 +66,7 @@ public:
 	void PlayElimMontage();
 	void PlayThrowGrenadeMontage();
 	void PlaySwapMontage();
-	void PlayHitReactMontage();
+	
 	void PlayDanceMontage();
 
 	virtual void OnRep_ReplicatedMovement() override;
@@ -101,8 +101,10 @@ public:
 
 	void SetTeamColor(ETeam Team);
 protected:
+	void PlayHitReactMontage();
 	virtual void BeginPlay() override;
 	virtual void PossessedBy(AController* NewController) override;
+	void InitAbilitySystemComponent();
 	virtual void OnRep_PlayerState() override;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputMappingContext* BlasterContext;
@@ -156,6 +158,7 @@ protected:
 	void AimOffset(float DeltaTime);
 	void CalculateAO_Pitch();
 	void SimProxiesTurn();
+	
 	void SetSpawnPoint();
 	void OnPlayerStateInitialized();
 	void ActivateDanceAbility();
@@ -229,16 +232,16 @@ protected:
 	* Ability System
 	*/
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	void AddStartupGameplayAbilities();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UGameplayEffect>> PassiveGameplayEffects;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
-	TArray<TSubclassOf<UBlasterGameplayAbility>> BlasterGameplayAbilities;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UBlasterGameplayAbility> DanceAbility;
+
+	void GiveCharacterAbilities();
+
+	void ApplyPassiveGameplayEffects();
 
 	UPROPERTY()
 	bool bAbilitiesInitialized;
@@ -418,6 +421,8 @@ private:
 
 	UPROPERTY()
 	ABlasterGameMode* BlasterGameMode;
+
+	bool bIsDancing = false;
 public:	
 	UPROPERTY(BlueprintReadOnly, Replicated)
 	FString PlayerName;
@@ -450,6 +455,9 @@ public:
 	FORCEINLINE bool IsHoldingTheFlag() const;
 	ETeam GetTeam();
 	void SetHoldingTheFlag(bool bHolding);
+	FORCEINLINE UAnimMontage* GetDanceMontage() const { return DanceMontage; }
+	FORCEINLINE bool IsDancing() const { return bIsDancing; }
+	FORCEINLINE void SetbIsDancing(bool IsDancing) { bIsDancing = IsDancing; }
 };
 
 

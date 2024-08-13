@@ -30,9 +30,8 @@ void UBlasterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribut
 	if (Attribute == GetMaxHealthAttribute())
 	{
 		AdjustAttributeForMaxChange(Health, MaxHealth, NewValue, GetHealthAttribute());
-		
 	}
-	else if(Attribute == GetMaxShieldAttribute())
+	else if (Attribute == GetMaxShieldAttribute())
 	{
 		AdjustAttributeForMaxChange(Shield, MaxShield, NewValue, GetShieldAttribute());
 	}

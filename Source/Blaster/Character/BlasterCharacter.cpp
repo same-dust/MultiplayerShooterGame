@@ -333,10 +333,16 @@ void ABlasterCharacter::PossessedBy(AController* NewController)
 	UpdateHUDGrenades(); // Work well on the Server when respawn.
 	
 	// Server GAS init
+	InitAbilitySystemComponent();
+	GiveCharacterAbilities(); // Server Only
+}
+
+void ABlasterCharacter::InitAbilitySystemComponent()
+{
+	BlasterPlayerState = IsValid(BlasterPlayerState) ? BlasterPlayerState : GetPlayerState<ABlasterPlayerState>();
 	if (AbilitySystemComponent)
 	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-		AddStartupGameplayAbilities();
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);	
 	}
 }
 
@@ -344,10 +350,7 @@ void ABlasterCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	// Client GAS init
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-	}
+	InitAbilitySystemComponent();
 
 	if (AbilitySystemComponent && InputComponent)
 	{
@@ -1113,11 +1116,12 @@ void ABlasterCharacter::OnPlayerStateInitialized()
 
 void ABlasterCharacter::ActivateDanceAbility()
 {
-	if (AbilitySystemComponent && DanceAbility)
+	if (AbilitySystemComponent&&DanceAbility&& GetCombatState()==ECombatState::ECS_Unoccupied)
 	{
 		AbilitySystemComponent->TryActivateAbilityByClass(DanceAbility);
 	}
 }
+
 
 void ABlasterCharacter::UpdateDissolveMaterial(float DissolveValue)
 {
@@ -1136,10 +1140,6 @@ void ABlasterCharacter::StartDissolve()
 		DissolveTimeline->Play();
 	}
 }
-
-
-
-
 
 void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 {
@@ -1163,43 +1163,41 @@ UAbilitySystemComponent* ABlasterCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
-void ABlasterCharacter::AddStartupGameplayAbilities()
+void ABlasterCharacter::GiveCharacterAbilities()
 {
 	check(AbilitySystemComponent);
 
 	if (GetLocalRole() == ROLE_Authority && !bAbilitiesInitialized)
 	{
 		// Grant abilities,but only on the server
-		for (TSubclassOf<UBlasterGameplayAbility>& StartupAbility : BlasterGameplayAbilities)
-		{
-			AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(
-				StartupAbility, 1,
-				StaticCast<int32>(StartupAbility.GetDefaultObject()->AbilityInputID),
-				this));
-		}
 
 		// Give Character the ability of dancing
 		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(DanceAbility, 1,
-			StaticCast<int32>(DanceAbility.GetDefaultObject()->AbilityInputID), this
-		));
+			StaticCast<int32>(DanceAbility.GetDefaultObject()->AbilityInputID),this
+			));
 
-		// Now apply passives
-		for (const TSubclassOf<UGameplayEffect>& GameplayEffect : PassiveGameplayEffects)
-		{
-			FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-			EffectContext.AddSourceObject(this);
-
-			FGameplayEffectSpecHandle NewHandle = AbilitySystemComponent->MakeOutgoingSpec(GameplayEffect, 1, EffectContext);
-
-			if (NewHandle.IsValid())
-			{
-				FActiveGameplayEffectHandle ActiveGameplayEffectHandle =
-					AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(
-						*NewHandle.Data.Get(), AbilitySystemComponent
-					);
-			}
-		}
+		ApplyPassiveGameplayEffects();
 		bAbilitiesInitialized = true;
+	}
+}
+
+void ABlasterCharacter::ApplyPassiveGameplayEffects()
+{
+	// Now apply passives
+	for (const TSubclassOf<UGameplayEffect>& GameplayEffect : PassiveGameplayEffects)
+	{
+		FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
+
+		FGameplayEffectSpecHandle NewHandle = AbilitySystemComponent->MakeOutgoingSpec(GameplayEffect, 1, EffectContext);
+
+		if (NewHandle.IsValid())
+		{
+			FActiveGameplayEffectHandle ActiveGameplayEffectHandle =
+				AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(
+					*NewHandle.Data.Get(), AbilitySystemComponent
+				);
+		}
 	}
 }
 
