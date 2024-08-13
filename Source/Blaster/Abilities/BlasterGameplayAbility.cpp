@@ -2,6 +2,7 @@
 
 
 #include "BlasterGameplayAbility.h"
+#include "Blaster/Character/BlasterCharacter.h"
 
 UBlasterGameplayAbility::UBlasterGameplayAbility()
 {
@@ -14,7 +15,7 @@ void UBlasterGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle H
 		ABlasterCharacter* Character = Cast<ABlasterCharacter>(ActorInfo->AvatarActor);
 		if (Character)
 		{
-			//Character->PlayDanceMontage();
+			Character->PlayDanceMontage();
 			UE_LOG(LogTemp, Warning, TEXT("Dancing Ability Active by Input"));
 		}
 		

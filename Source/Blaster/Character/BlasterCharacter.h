@@ -66,6 +66,8 @@ public:
 	void PlayElimMontage();
 	void PlayThrowGrenadeMontage();
 	void PlaySwapMontage();
+	void PlayHitReactMontage();
+	void PlayDanceMontage();
 
 	virtual void OnRep_ReplicatedMovement() override;
 	void Elim(bool bPlayerLeftGame);
@@ -132,6 +134,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputAction* ThrowGrenadeAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputAction* DanceAction;
+
 	//
 	// the callback function which UInputAction bind
 	//
@@ -151,9 +156,9 @@ protected:
 	void AimOffset(float DeltaTime);
 	void CalculateAO_Pitch();
 	void SimProxiesTurn();
-	void PlayHitReactMontage();
 	void SetSpawnPoint();
 	void OnPlayerStateInitialized();
+	void ActivateDanceAbility();
 	
 	UFUNCTION()
 	void ReceiveDamage(AActor* DamagedActor,float Damage,const UDamageType* DamageType,AController* InstigatorController,AActor* DamageCauser);
@@ -232,6 +237,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UBlasterGameplayAbility>> BlasterGameplayAbilities;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UBlasterGameplayAbility> DanceAbility;
+
 	UPROPERTY()
 	bool bAbilitiesInitialized;
 private:
@@ -299,6 +307,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* SwapMontage;
 
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	UAnimMontage* DanceMontage;
+
 	ETurningInPlace TurningInPlace;
 	void TurnInPlace(float DeltaTime);
 
@@ -314,19 +325,6 @@ private:
 	float ProxyYaw;
 	float TimeSinceLastMovementReplication;
 	float CalculateSpeed();
-
-	/**
-	* Player shield
-	
-
-	UPROPERTY(EditAnywhere, Category = "Player Stats")
-	float MaxShield = 200.f;
-
-	UPROPERTY(ReplicatedUsing = OnRep_Shield, EditAnywhere, Category = "Player Stats")
-	float Shield = 0.f;
-
-	UFUNCTION()
-	void OnRep_Shield(float LastShield);*/
 
 	UPROPERTY()
 	ABlasterPlayerController* BlasterPlayerController;

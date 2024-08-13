@@ -185,7 +185,6 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);  // make the replicated only happen to the client which overlapping the weapons
-	//DOREPLIFETIME(ABlasterCharacter, Shield);
 	DOREPLIFETIME(ABlasterCharacter, bDisableGameplay);
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, PlayerName, COND_InitialOnly);
 }
@@ -324,17 +323,14 @@ void ABlasterCharacter::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 	// we actually don't need to check HasAuthority(),because it's accessed only by server,whatever,just keep it
 	//Add Input Mapping Context (Listen Server)
-	if (HasAuthority())
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
-		if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
-			if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-			{
-				Subsystem->AddMappingContext(BlasterContext, 0);
-			}
+			Subsystem->AddMappingContext(BlasterContext, 0);
 		}
-		UpdateHUDGrenades(); // Work well on the Server when respawn.
 	}
+	UpdateHUDGrenades(); // Work well on the Server when respawn.
 	
 	// Server GAS init
 	if (AbilitySystemComponent)
@@ -602,6 +598,16 @@ void ABlasterCharacter::PlayHitReactMontage()
 	}
 }
 
+void ABlasterCharacter::PlayDanceMontage()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && DanceMontage)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Play Dance Montage"));
+		AnimInstance->Montage_Play(DanceMontage);
+	}
+}
+
 void ABlasterCharacter::SetSpawnPoint()
 {
 	if (HasAuthority()&&BlasterPlayerState->GetTeam()!=ETeam::ET_NoTeam)
@@ -723,6 +729,7 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Completed, this, &ABlasterCharacter::FireButtonReleased);
 		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this, &ABlasterCharacter::ReloadButtonPressed);
 		EnhancedInputComponent->BindAction(ThrowGrenadeAction, ETriggerEvent::Started, this, &ABlasterCharacter::GrenadeButtonPressed);
+		EnhancedInputComponent->BindAction(DanceAction, ETriggerEvent::Started, this, &ABlasterCharacter::ActivateDanceAbility);
 	}
 
 	if (AbilitySystemComponent && InputComponent)
@@ -1104,17 +1111,13 @@ void ABlasterCharacter::OnPlayerStateInitialized()
 	SetSpawnPoint();
 }
 
-
-/*void ABlasterCharacter::OnRep_Shield(float LastShield)
+void ABlasterCharacter::ActivateDanceAbility()
 {
-	UpdateHUDShield();
-	if (Shield < LastShield)
+	if (AbilitySystemComponent && DanceAbility)
 	{
-		PlayHitReactMontage();
+		AbilitySystemComponent->TryActivateAbilityByClass(DanceAbility);
 	}
-}*/
-
-
+}
 
 void ABlasterCharacter::UpdateDissolveMaterial(float DissolveValue)
 {
@@ -1174,6 +1177,11 @@ void ABlasterCharacter::AddStartupGameplayAbilities()
 				StaticCast<int32>(StartupAbility.GetDefaultObject()->AbilityInputID),
 				this));
 		}
+
+		// Give Character the ability of dancing
+		AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(DanceAbility, 1,
+			StaticCast<int32>(DanceAbility.GetDefaultObject()->AbilityInputID), this
+		));
 
 		// Now apply passives
 		for (const TSubclassOf<UGameplayEffect>& GameplayEffect : PassiveGameplayEffects)
