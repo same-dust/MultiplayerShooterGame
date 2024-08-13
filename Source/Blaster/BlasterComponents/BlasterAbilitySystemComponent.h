@@ -15,6 +15,7 @@ class BLASTER_API UBlasterAbilitySystemComponent : public UAbilitySystemComponen
 {
 	GENERATED_BODY()
 public:
+	UBlasterAbilitySystemComponent();
 	friend ABlasterCharacter;
 private:
 	UPROPERTY()

@@ -8,6 +8,10 @@
 
 UBlasterAttributeSet::UBlasterAttributeSet()
 {
+	InitHealth(100.f);
+	InitMaxHealth(100.f);
+	InitShield(0.f);
+	InitMaxShield(200.f);
 }
 
 void UBlasterAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -26,6 +30,10 @@ void UBlasterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribut
 	if (Attribute == GetMaxHealthAttribute())
 	{
 		AdjustAttributeForMaxChange(Health, MaxHealth, NewValue, GetHealthAttribute());
+		
+	}
+	else if(Attribute == GetMaxShieldAttribute())
+	{
 		AdjustAttributeForMaxChange(Shield, MaxShield, NewValue, GetShieldAttribute());
 	}
 }

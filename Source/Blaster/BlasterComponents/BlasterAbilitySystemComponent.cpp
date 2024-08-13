@@ -3,3 +3,8 @@
 
 #include "BlasterAbilitySystemComponent.h"
 
+UBlasterAbilitySystemComponent::UBlasterAbilitySystemComponent()
+{
+	SetIsReplicated(true);
+
+}

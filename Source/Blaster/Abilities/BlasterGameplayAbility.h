@@ -17,6 +17,9 @@ class BLASTER_API UBlasterGameplayAbility : public UGameplayAbility
 public:
 	UBlasterGameplayAbility();
 
+	/** Actually activate ability, do not call this directly */
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+
 	UPROPERTY(EditAnywhere, Category = "Abilities")
 	EBlasterAbilityInput AbilityInputID{ EBlasterAbilityInput::EBAI_None };
 

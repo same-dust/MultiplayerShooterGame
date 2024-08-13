@@ -7,6 +7,7 @@ enum class EBlasterAbilityInput :uint8
 	EBAI_Confirm UMETA(DisplayName="Confirm"),
 	EBAI_Cancel UMETA(DisplayName="Cancel"),
 	EBAI_Fire UMETA(DisplayName="Fire"),
+	EBAI_Dancing UMETA(DisplayName = "Dancing"),
 
 	EBAI_MAX UMETA(DisplayName = "DefaultMAX")
 };
