@@ -13,7 +13,7 @@
 - **Niagara**粒子系统--制作一些VFX
 - **Gameplay Ability**插件（即GAS）来控制角色的属性（Attributes），如角色的生命值（Health）和护甲值（Shield）；同时还可以用来管理角色类的一些能力，如Fire，Dance等
 
-​				**Our cute character can dance Hip-Hop now！！！**
+	​						**Our cute character can dance Hip-Hop now！！！**
 
 ![](.\images\dance.gif)
 
